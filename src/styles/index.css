@@ -1,0 +1,238 @@
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, oxygen, ubuntu, cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Times New Roman', Times, serif;
+}
+
+[data-theme="modern"] {
+  /* Light Theme */
+  --color-bg: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-primary: #2563eb; /* Blue 600 */
+  --color-primary-hover: #1d4ed8;
+  --color-border: #e5e7eb;
+  
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --radius: 0.5rem;
+  --font-body: var(--font-sans);
+  --card-border: 1px solid var(--color-border);
+}
+
+[data-theme="modern"] body {
+    color: var(--color-text-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="modern"] {
+    --color-bg: #0f172a; /* Slate 900 */
+    --color-surface: #1e293b; /* Slate 800 */
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #94a3b8;
+    --color-primary: #3b82f6; /* Blue 500 */
+    --color-primary-hover: #60a5fa;
+    --color-border: #334155;
+  }
+}
+
+[data-theme="custom"] {
+    --color-bg: #FFFFFF;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #000000;
+    --color-text-secondary: #444444;
+    --color-primary: #7BA79D; /* Teal from DOCX */
+    --color-primary-hover: #5A857B;
+    --color-accent: #F7B615; /* Gold from DOCX */
+    --color-border: #EBDDC3; /* Beige from DOCX */
+    
+    --shadow-sm: none;
+    --shadow-md: none;
+    --radius: 0;
+    --font-body: 'Century Gothic', sans-serif;
+    --card-border: none;
+}
+
+[data-theme="custom"] .cv-container {
+    display: grid;
+    grid-template-columns: 300px 1fr; /* Sidebar width increased for better fit */
+    gap: 2rem;
+    align-items: start;
+}
+
+[data-theme="custom"] .cv-sidebar {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 2rem;
+    min-height: 100vh; /* Full height sidebar */
+    margin-top: -2rem; /* Negate container padding if needed, or adjust structure */
+}
+
+/* Adjust container padding for custom theme to allow full bleed sidebar if desired, 
+   but for simplicity inside "container" class, we just style the sidebar box */
+[data-theme="custom"] .container {
+    max-width: 1000px; /* Wider for 2 cols */
+    padding: 0;
+}
+
+[data-theme="custom"] .cv-sidebar h1, 
+[data-theme="custom"] .cv-sidebar h2, 
+[data-theme="custom"] .cv-sidebar h3,
+[data-theme="custom"] .cv-sidebar a,
+[data-theme="custom"] .cv-sidebar p,
+[data-theme="custom"] .cv-sidebar span {
+    color: white;
+}
+
+[data-theme="custom"] .cv-sidebar h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+[data-theme="custom"] .cv-main {
+    padding: 2rem;
+}
+
+[data-theme="custom"] body {
+    background-image: none; /* Reset gradient, let sidebar color do the work */
+    background-color: white;
+}
+
+[data-theme="custom"] h1, [data-theme="custom"] h2, [data-theme="custom"] h3 {
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+[data-theme="custom"] a {
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-accent);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+[data-theme="custom"] .container {
+    max-width: 100%;
+    padding: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  border: none;
+  background-color: var(--color-primary);
+  color: white; /* Always white for buttons in modern, check classic */
+  transition: background-color 0.2s;
+}
+
+[data-theme="custom"] .btn {
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+[data-theme="custom"] .btn:hover {
+    background-color: var(--color-primary-hover);
+}
+
+.btn:hover {
+  background-color: var(--color-primary-hover);
+  text-decoration: none;
+}
+
+.card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: var(--card-border);
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="custom"] .card {
+    padding: 0;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--color-border);
+    padding-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-secondary);
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: inherit;
+}
+
+.form-input:focus, .form-textarea:focus {
+  outline: 2px solid var(--color-primary);
+  border-color: transparent;
+}
+
+@media print {
+    .no-print, header, button {
+        display: none !important;
+    }
+    body {
+        background-color: white;
+        -webkit-print-color-adjust: exact;
+    }
+    .cv-container {
+        display: grid !important; /* Force grid for printing if needed */
+    }
+    .container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
