@@ -1,6 +1,5 @@
 :root {
-  --font-sans: "Inter", system-ui, -apple-system, blinkmacsystemfont, "Segoe UI",
-    roboto, oxygen, ubuntu, cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-sans: "Tahoma", sans-serif;
   --font-serif: "Times New Roman", Times, serif;
 }
 
@@ -50,7 +49,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(28 25 23 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(28 25 23 / 0.1);
   --radius: 2px;
-  --font-body: "Georgia", serif;
+  --font-body: "Tahoma", sans-serif;
   --card-border: 1px solid var(--color-border);
 }
 
