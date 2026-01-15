@@ -245,9 +245,9 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
                     <div key={exp.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', marginBottom: '1rem', borderRadius: 'var(--radius)' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: 1 }}>
-                                <input placeholder="Company" className="form-input" style={{ marginBottom: '0.5rem' }} value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} />
-                                <input placeholder="Role" className="form-input" style={{ marginBottom: '0.5rem' }} value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} />
-                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <input placeholder="Company" className="form-input" style={{ marginBottom: '1rem' }} value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} />
+                                <input placeholder="Role" className="form-input" style={{ marginBottom: '1rem' }} value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} />
+                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                                     <input placeholder="Start Date" className="form-input" value={exp.startDate} onChange={e => updateExperience(exp.id, 'startDate', e.target.value)} />
                                     <input placeholder="End Date" className="form-input" value={exp.endDate} onChange={e => updateExperience(exp.id, 'endDate', e.target.value)} />
                                 </div>
@@ -268,8 +268,8 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
                     <div key={edu.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', marginBottom: '1rem', borderRadius: 'var(--radius)' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: 1 }}>
-                                <input placeholder="Institution" className="form-input" style={{ marginBottom: '0.5rem' }} value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} />
-                                <input placeholder="Degree" className="form-input" style={{ marginBottom: '0.5rem' }} value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} />
+                                <input placeholder="Institution" className="form-input" style={{ marginBottom: '1rem' }} value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} />
+                                <input placeholder="Degree" className="form-input" style={{ marginBottom: '1rem' }} value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} />
                                 <input placeholder="Year" className="form-input" value={edu.year} onChange={e => updateEducation(edu.id, 'year', e.target.value)} />
                             </div>
                             <button onClick={() => removeEducation(edu.id)} style={{ color: 'red', background: 'none', border: 'none', alignSelf: 'flex-start' }}>X</button>
@@ -318,7 +318,7 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
                     <button className="btn" onClick={addLanguage} style={{ fontSize: '0.8rem' }}>+ Add</button>
                 </div>
                 {cv.languages?.map(lang => (
-                    <div key={lang.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                    <div key={lang.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                         <input className="form-input" placeholder="Language" value={lang.language} onChange={e => updateLanguage(lang.id, 'language', e.target.value)} />
                         <select 
                             className="form-input" 
@@ -346,7 +346,7 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
                     <button className="btn" onClick={addCertification} style={{ fontSize: '0.8rem' }}>+ Add</button>
                 </div>
                 {cv.certifications?.map(cert => (
-                    <div key={cert.id} style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                    <div key={cert.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                         <input className="form-input" placeholder="Certification Name" value={cert.name} onChange={e => updateCertification(cert.id, 'name', e.target.value)} />
                         <input className="form-input" placeholder="Year" value={cert.year} onChange={e => updateCertification(cert.id, 'year', e.target.value)} />
                         <button onClick={() => removeCertification(cert.id)} style={{ color: 'red', background: 'none', border: 'none' }}>&times;</button>
