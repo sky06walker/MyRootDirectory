@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" /> <!-- Cyan -->
+      <stop offset="100%" style="stop-color:#d946ef;stop-opacity:1" /> <!-- Fuchsia/Purple -->
+    </linearGradient>
+  </defs>
+  <!-- Folder Back -->
+  <path d="M4 12 L24 12 L32 20 L60 20 C62.2 20 64 21.8 64 24 L64 52 C64 54.2 62.2 56 60 56 L4 56 C1.8 56 0 54.2 0 52 L0 16 C0 13.8 1.8 12 4 12 Z" fill="url(#grad1)" />
+  <!-- Terminal Prompt -->
+  <text x="10" y="45" font-family="monospace" font-weight="bold" font-size="24" fill="white">&gt;_</text>
+</svg>
