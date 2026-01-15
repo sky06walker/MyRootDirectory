@@ -23,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, currentTheme, onToggleT
     };
 
     return (
-        <header style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <header style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
             <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
                 My Root Directory
             </Link>

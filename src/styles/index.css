@@ -245,3 +245,29 @@ button {
     padding: 0 !important;
   }
 }
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  [data-theme="custom"] .cv-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  [data-theme="custom"] .cv-sidebar {
+    min-height: auto;
+    margin-top: 0;
+    padding: 1.5rem;
+  }
+
+  [data-theme="custom"] .cv-main {
+    padding: 1.5rem;
+  }
+
+  [data-theme="custom"] header {
+    flex-wrap: wrap;
+  }
+}
