@@ -4,5 +4,5 @@ pages_build_output_dir = "dist"
 
 [[kv_namespaces]]
 binding = "CV_DATA"
-id = "cv_data_kv"
-preview_id = "cv_data_kv_preview"
+id = "54cf53aaa5eb4ffa8694e3fcf0f70ec8"
+preview_id = "54cf53aaa5eb4ffa8694e3fcf0f70ec8"
