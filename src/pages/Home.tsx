@@ -222,17 +222,20 @@ export const Home: React.FC<HomeProps> = ({ theme, toggleTheme }) => {
                 </div>
               ))}
 
-              {/* Then Certifications */}
-              {cv.certifications?.map((cert) => (
-                <div key={cert.id} style={{ marginBottom: "1rem" }}>
-                  <h4 style={{ fontSize: "1rem", fontWeight: "bold" }}>
-                    {cert.name}
-                  </h4>
-                  <span style={{ fontSize: "0.8rem", opacity: 0.8 }}>
-                    {cert.year}
-                  </span>
-                </div>
-              ))}
+              {/* Then Certifications (sorted by year, newest first) */}
+              {cv.certifications
+                ?.slice()
+                .sort((a, b) => parseInt(b.year) - parseInt(a.year))
+                .map((cert) => (
+                  <div key={cert.id} style={{ marginBottom: "1rem" }}>
+                    <h4 style={{ fontSize: "1rem", fontWeight: "bold" }}>
+                      {cert.name}
+                    </h4>
+                    <span style={{ fontSize: "0.8rem", opacity: 0.8 }}>
+                      {cert.year}
+                    </span>
+                  </div>
+                ))}
             </div>
 
             {cv.languages && cv.languages.length > 0 && (
@@ -541,17 +544,20 @@ export const Home: React.FC<HomeProps> = ({ theme, toggleTheme }) => {
         </CVSection>
       )}
 
-      {/* Certifications (Modern Theme) */}
+      {/* Certifications (Modern Theme, sorted by year, newest first) */}
       {cv.certifications && cv.certifications.length > 0 && (
         <CVSection title="Certifications">
-          {cv.certifications.map((cert) => (
-            <div key={cert.id} style={{ marginBottom: "0.5rem" }}>
-              <strong>{cert.name}</strong>{" "}
-              <span style={{ color: "var(--color-text-secondary)" }}>
-                ({cert.year})
-              </span>
-            </div>
-          ))}
+          {cv.certifications
+            .slice()
+            .sort((a, b) => parseInt(b.year) - parseInt(a.year))
+            .map((cert) => (
+              <div key={cert.id} style={{ marginBottom: "0.5rem" }}>
+                <strong>{cert.name}</strong>{" "}
+                <span style={{ color: "var(--color-text-secondary)" }}>
+                  ({cert.year})
+                </span>
+              </div>
+            ))}
         </CVSection>
       )}
     </div>
