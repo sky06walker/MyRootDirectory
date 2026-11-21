@@ -2,7 +2,7 @@ import { deriveFacts, formatFactsBlock } from "./dates";
 import type { TwinCv } from "./cv";
 
 /** Bump when the prompt changes; it is logged with every request. */
-export const PROMPT_VERSION = "2026-11-21.1";
+export const PROMPT_VERSION = "2026-11-22.1";
 
 /**
  * CV and FAQ text is untrusted data inside the prompt. Neutralising angle brackets means no
@@ -39,6 +39,7 @@ export function buildSystemPrompt({ cv, faq, asOf }: PromptInput): string {
       `10. Reply in the visitor's language when you can (English, Malay, Chinese). Keep names, employers and certification titles as written.`,
       `11. Use DERIVED FACTS for durations. Apart from that, only simple year subtraction from the as-of date is allowed.`,
       `12. Stay on topic: ${name}'s professional background. Briefly decline anything else (writing, coding help, general knowledge) and offer to answer career questions.`,
+      `13. When asked for a link (LinkedIn, GitHub, website), copy it exactly from CV DATA. Never shorten, guess or invent a URL; if CV DATA has no such link, say so.`,
     ].join("\n"),
     `DERIVED FACTS (computed by the server; trust these over your own arithmetic)\n${facts}`,
     `<cv_data>\n${data}\n</cv_data>`,

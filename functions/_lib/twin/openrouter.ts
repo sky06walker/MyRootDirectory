@@ -6,7 +6,9 @@ export type UpstreamErrorKind =
   | "quota_daily" // free-tier daily request cap reached (account-wide)
   | "rate_limited" // per-minute / provider throttling
   | "payment" // 402: credits / budget problem
-  | "unavailable" // 5xx, network error, auth/config problem
+  | "rejected_key" // 401/403: the provider refused the API key (or the key may not use this model)
+  | "bad_request" // 400/404/422: the provider does not accept the request, usually a wrong model id
+  | "unavailable" // 5xx, network error
   | "timeout"
   | "bad_response";
 
@@ -59,6 +61,8 @@ async function readLimited(res: Response, maxBytes: number): Promise<string | nu
 export function classifyError(status: number, message: string): UpstreamErrorKind {
   if (status === 402) return "payment";
   if (status === 429) return /per[- ]?day|daily/i.test(message) ? "quota_daily" : "rate_limited";
+  if (status === 401 || status === 403) return "rejected_key";
+  if (status === 400 || status === 404 || status === 422) return "bad_request";
   return "unavailable";
 }
 

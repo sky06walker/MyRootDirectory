@@ -65,6 +65,28 @@ describe("validateModels", () => {
     expect(validateModels(["a/b:free", "c/d"], false, "openrouter.ai").ok).toBe(false);
   });
 
+  it("allows OpenRouter's automatic free router, but no other openrouter/* router", () => {
+    expect(validateModels(["openrouter/free"], false, "openrouter.ai")).toMatchObject({ ok: true });
+    expect(validateModels(["google/gemma-4-31b-it:free", "openrouter/free"], false, "openrouter.ai", true)).toMatchObject({ ok: true });
+    for (const router of ["openrouter/auto", "openrouter/auto-code", "openrouter/fusion", "openrouter/free-plus"]) {
+      expect(validateModels([router], false, "openrouter.ai").ok, router).toBe(false); // variable pricing: can bill
+      expect(validateModels([router], true, "openrouter.ai")).toMatchObject({ ok: true }); // only with the paid confirmation
+    }
+    // The free-router exception does not apply to other providers.
+    expect(validateModels(["openrouter/free"], false, "api.groq.com").ok).toBe(false);
+  });
+
+  it("when saving, rejects ids that cannot be OpenRouter ids and says what to use instead", () => {
+    const typo = validateModels(["google/gemma-4-31b-it:free", "openrouter:free"], false, "openrouter.ai", true);
+    expect(typo.ok).toBe(false);
+    expect(!typo.ok && typo.message).toContain("openrouter/free");
+    expect(validateModels(["gpt4"], true, "openrouter.ai", true).ok).toBe(false);
+    // Already-saved records still load (no strict format), so an old typo does not silently switch the twin off.
+    expect(validateModels(["openrouter:free"], false, "openrouter.ai")).toMatchObject({ ok: true });
+    // Other providers may legitimately use ids without a slash.
+    expect(validateModels(["llama-3.3-70b"], true, "api.groq.com", true)).toMatchObject({ ok: true });
+  });
+
   it("paid models and other providers need the explicit allowPaid confirmation", () => {
     expect(validateModels(["openai/gpt-4o"], true, "openrouter.ai")).toMatchObject({ ok: true });
     expect(validateModels(["llama-3.3-70b"], false, "api.groq.com").ok).toBe(false); // no slash, not OpenRouter

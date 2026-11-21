@@ -162,7 +162,7 @@ export async function saveConfig(env: Env, body: unknown, ctx: AdminContext): Pr
   const url = validateProviderUrl(input.providerUrl ?? base.providerUrl, ctx.ownHost);
   if (!url.ok) return fail(400, "invalid", url.message);
   const providerHost = new URL(url.value).hostname;
-  const models = validateModels(input.models ?? base.models, allowPaid, providerHost);
+  const models = validateModels(input.models ?? base.models, allowPaid, providerHost, true);
   if (!models.ok) return fail(400, "invalid", models.message);
 
   const originChanged = new URL(base.providerUrl).origin !== new URL(url.value).origin;

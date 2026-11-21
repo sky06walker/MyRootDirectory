@@ -9,6 +9,8 @@ const TwinDialog = lazy(loadDialog);
 
 export interface TwinOwner {
   name: string;
+  /** How the owner introduces themselves in the dialog ("I'm Wei Hon."); falls back to `name`. */
+  shortName?: string;
   email: string;
   linkedin?: string;
   github?: string;

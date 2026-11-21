@@ -4,6 +4,7 @@ import {
   MODEL_CHARSET,
   OPENROUTER_HOST,
   type TwinConfig,
+  isFreeOpenRouterId,
   readConfig,
   readInfra,
 } from "./config";
@@ -82,8 +83,17 @@ export function validateProviderUrl(input: unknown, ownHost?: string): Checked<s
   return { ok: true, value: url.href };
 }
 
-/** `providerHost` decides which cost guard applies: free-only is only meaningful on OpenRouter. */
-export function validateModels(input: unknown, allowPaid: boolean, providerHost: string): Checked<string[]> {
+/**
+ * `providerHost` decides which cost guard applies: free-only is only meaningful on OpenRouter.
+ * `strictFormat` (used when the admin SAVES) also rejects ids that cannot be OpenRouter ids; it is
+ * off when loading an already-saved record so an old typo never silently switches the twin off.
+ */
+export function validateModels(
+  input: unknown,
+  allowPaid: boolean,
+  providerHost: string,
+  strictFormat = false,
+): Checked<string[]> {
   if (!Array.isArray(input) || input.length < 1 || input.length > MAX_MODELS) {
     return bad(`Enter 1 to ${MAX_MODELS} model ids.`);
   }
@@ -91,6 +101,11 @@ export function validateModels(input: unknown, allowPaid: boolean, providerHost:
   for (const item of input) {
     const model = typeof item === "string" ? item.trim() : "";
     if (!MODEL_CHARSET.test(model)) return bad("A model id contains characters that are not allowed.");
+    if (strictFormat && providerHost === OPENROUTER_HOST && !model.includes("/")) {
+      return bad(
+        `"${model}" is not an OpenRouter model id: they look like vendor/model, for example google/gemma-4-31b-it:free. For the automatic free mode use openrouter/free.`,
+      );
+    }
     if (models.includes(model)) return bad("Model ids must be different from each other.");
     models.push(model);
   }
@@ -99,8 +114,10 @@ export function validateModels(input: unknown, allowPaid: boolean, providerHost:
       "The free-only protection only covers OpenRouter. For any other provider, tick \"allow paid models\" to confirm you accept possible charges.",
     );
   }
-  if (!allowPaid && !models.every((m) => m.endsWith(":free"))) {
-    return bad("Model ids must end in :free, unless you tick \"allow paid models\" (which may cost money).");
+  if (!allowPaid && !models.every(isFreeOpenRouterId)) {
+    return bad(
+      "Model ids must end in :free (or be openrouter/free, the automatic free mode), unless you tick \"allow paid models\" (which may cost money).",
+    );
   }
   return { ok: true, value: models };
 }

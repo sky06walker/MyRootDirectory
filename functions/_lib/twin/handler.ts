@@ -16,6 +16,7 @@ import {
   verifyTurnstile,
 } from "./guard";
 import { callOpenRouter } from "./openrouter";
+import { guardLinks, ownerLinks } from "./links";
 import { PROMPT_VERSION, buildSystemPrompt, filterAnswer } from "./prompt";
 import { LIMITS, validateChatRequest } from "./validate";
 
@@ -182,7 +183,11 @@ export async function handleChat(
       }
     }
 
-    const { text, filtered } = filterAnswer(result.answer, cvData.profile.name);
+    const filteredAnswer = filterAnswer(result.answer, cvData.profile.name);
+    // Links in the answer must be the CV's real ones: fixes a mis-copied LinkedIn, drops invented links.
+    const guarded = guardLinks(filteredAnswer.text, ownerLinks(cv));
+    const text = guarded.text;
+    const filtered = filteredAnswer.filtered || guarded.changed;
     meta.model_served = result.model;
     meta.out_chars = text.length;
     meta.prompt_tokens = result.promptTokens;

@@ -27,7 +27,7 @@ broken the twin fails closed (stays off); it never quietly falls back to other s
 |---|---|
 | Show to visitors | Master switch for the twin. |
 | AI provider URL | The **full chat-completions endpoint**, `https` only, a public host name (no IP addresses, no `localhost`/`.local`, no port, no query), and never this site itself. Default: `https://openrouter.ai/api/v1/chat/completions`. |
-| AI model(s) | 1 to 3 ids, tried in order (only the first is used outside OpenRouter). Free-only by default: ids must end in `:free`. |
+| AI model(s) | 1 to 3 ids, tried in order (only the first is used outside OpenRouter). Free-only by default: ids must end in `:free` (for example `google/gemma-4-31b-it:free`) **or** be `openrouter/free`, OpenRouter's automatic free-models router (listed price 0). The other `openrouter/*` routers (`auto`, ...) can bill and need "Allow paid models". On OpenRouter an id must look like `vendor/model`; a typo such as `openrouter:free` is rejected with a hint. |
 | Allow paid models | Tick to use paid models **or any provider other than OpenRouter**. The free-only protection then no longer applies and visitor questions may cost money; set a spending limit at the provider and keep `TWIN_GLOBAL_DAILY_CAP` low. |
 | AI API key | Write-only: shown only as "saved, ends in ABCD", never returned. Replace it by typing a new one, or tick "Remove". Changing the provider host removes the saved key (you must enter the key for the new provider). |
 | Avatar | Any picture; the browser crops it to a square and shrinks it to 192 px (PNG/WebP, 100 KB at most). "Use the built-in avatar" goes back to the default. |
@@ -48,6 +48,11 @@ Behind the scenes:
 - The provider is never allowed to redirect the request elsewhere, and a response bigger than about 100 KB
   is cut off. "Test saved settings" sends one tiny request (at most once per 10 seconds) and reports only
   success or a failure type, never what the provider said.
+- **Links in answers are checked.** After the AI answers, every link is compared with the links really in
+  your CV (LinkedIn, GitHub, website): exact matches are kept, any LinkedIn profile link the model wrote is
+  replaced by yours, and every other link is replaced by "[link removed]". In the dialog, your own links in an
+  answer are clickable and open exactly the address stored in the CV. Fix a wrong LinkedIn address in the CV
+  data (`contact.linkedin`; the page shows `profile.url`, the "Website URL" field in the admin page).
 - The avatar is stored in KV as an image named by its content hash and served from `/api/twin/avatar?h=...`
   with `nosniff` and a sandboxing CSP. Only PNG and WebP are accepted (no SVG, no JPEG metadata) and the
   file is checked by its own bytes and size.
@@ -127,7 +132,7 @@ npm run build && npx wrangler pages dev dist --d1 TWIN_DB   # terminal 2
 On localhost the provider URL you save is replaced by `TWIN_UPSTREAM_URL` (the mock) for chat and for
 "Test saved settings"; this override is ignored for any request that came through Cloudflare. In the mock,
 keywords in the question trigger behaviours: `QUOTA` (daily limit -> resting), `THROTTLE`, `PAYMENT`,
-`BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup). `GET http://127.0.0.1:8790/last`
+`BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup), `LINK` (answer with a wrong LinkedIn and a phishing link: the link guard fixes or removes them). `GET http://127.0.0.1:8790/last`
 shows the last request, including the real system prompt. Tests: `npm test` (no network).
 
 ## Not built yet (deliberately deferred, see planning/PLAN.md "Revision 2")

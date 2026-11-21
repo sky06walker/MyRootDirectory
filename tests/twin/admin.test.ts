@@ -105,6 +105,19 @@ describe("saving settings", () => {
     expect((await firstSave({ providerUrl: "https://api.groq.com/openai/v1/chat/completions", models: ["llama-3.3-70b"], allowPaid: true })).status).toBe(200);
   });
 
+  it("accepts the automatic free router next to a named free model, and rejects the 'openrouter:free' typo", async () => {
+    const good = await firstSave({ models: ["google/gemma-4-31b-it:free", "openrouter/free"] });
+    expect(good.status).toBe(200);
+    expect((good.body.settings as { models: string[] }).models).toEqual(["google/gemma-4-31b-it:free", "openrouter/free"]);
+
+    kv = fakeKv();
+    resetTwinCaches();
+    const typo = await firstSave({ models: ["google/gemma-4-31b-it:free", "openrouter:free"] });
+    expect(typo.status).toBe(400);
+    expect(String(typo.body.message)).toContain("openrouter/free");
+    expect((await firstSave({ models: ["openrouter/auto"] })).status).toBe(400); // can bill: needs allowPaid
+  });
+
   it("rejects stale saves (optimistic concurrency) and accepts the current token", async () => {
     const first = await firstSave();
     const token = (first.body.settings as { updatedAt: number }).updatedAt;
@@ -188,6 +201,18 @@ describe("test connection", () => {
     expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${API_KEY}`);
     expect(JSON.stringify(r.body)).not.toContain("TOPSECRET");
+  });
+
+  it("tells a refused key apart from a wrong model id or request", async () => {
+    await firstSave();
+    const answer = (status: number) => vi.fn(async () => json({ error: { message: "PROVIDER-TEXT" } }, status)) as unknown as typeof fetch;
+    let t = 5_000_000;
+    for (const [status, kind] of [[401, "rejected_key"], [403, "rejected_key"], [400, "bad_request"], [404, "bad_request"], [500, "unavailable"]] as const) {
+      t += 20_000;
+      const r = await testConnection(newEnv(), ctx, { fetchImpl: answer(status), now: () => t });
+      expect(r.body, String(status)).toMatchObject({ ok: false, kind });
+      expect(JSON.stringify(r.body)).not.toContain("PROVIDER-TEXT");
+    }
   });
 
   it("maps failures to a kind and never leaks what the provider said", async () => {

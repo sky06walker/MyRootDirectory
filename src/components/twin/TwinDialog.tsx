@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from '../ExternalLink';
 import { askTwin, type AskResult, type TwinMessage } from '../../utils/twinApi';
 import { getTurnstileToken } from '../../utils/turnstile';
+import { linkify } from './linkify';
 import { STARTERS } from './starters';
 import { TwinAvatar } from './TwinAvatar';
 import type { TwinOwner } from './TwinLauncher';
@@ -89,7 +90,15 @@ const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, 
   const add = (message: TwinMessage, canned = false) =>
     setItems((prev) => [...prev, { ...message, id: nextId.current++, canned }]);
 
-  const contactAnswer = `The best way is email: ${owner.email}.${owner.linkedin || owner.github ? ' You can also find me on LinkedIn and GitHub (links below).' : ''}`;
+  // The links are written out in full so they are clickable in the answer (see linkify) and always
+  // the exact ones from the CV.
+  const contactAnswer = [
+    `The best way is email: ${owner.email}.`,
+    owner.linkedin ? `LinkedIn: ${owner.linkedin}` : '',
+    owner.github ? `GitHub: ${owner.github}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const askStarter = (question: string, answer: string) => {
     setError(null);
@@ -165,14 +174,14 @@ const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, 
     >
       <header className="twin-header">
         <TwinAvatar hash={avatarHash} size={40} className={`twin-header-avatar${busy ? ' is-thinking' : ''}`} />
-        <p id="twin-title" className="twin-title">Ask my digital twin</p>
+        <p id="twin-title" className="twin-title">Ask me</p>
         <button type="button" className="twin-close" onClick={onClose} aria-label="Close chat">
           &times;
         </button>
       </header>
 
       <p className="twin-disclosure">
-        I'm an AI, not {owner.name}. My answers come from this CV and may be inaccurate. Messages are
+        I'm {owner.shortName ?? owner.name}. My answers come from this CV and may be inaccurate. Messages are
         processed by a third-party AI provider that may log them, so please don't share personal or
         sensitive information.
       </p>
@@ -187,7 +196,7 @@ const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, 
         )}
         {items.map((m) => (
           <div key={m.id} className={`twin-msg ${m.role}`}>
-            <p>{m.content}</p>
+            <p>{m.role === 'assistant' ? linkify(m.content, [owner.linkedin, owner.github]) : m.content}</p>
           </div>
         ))}
         {busy && (

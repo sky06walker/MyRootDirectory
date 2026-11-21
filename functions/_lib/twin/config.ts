@@ -25,6 +25,16 @@ export type InfraConfig = Pick<
 
 // Free-only default: unless the admin ticks "allow paid", only ":free" ids can ever be sent upstream.
 const FREE_MODEL_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/i;
+
+/**
+ * OpenRouter's own "Free Models Router": picks a free model automatically (its listed price is 0
+ * for prompt and completion). The OTHER openrouter/* routers (auto, auto-code, ...) have variable
+ * pricing and can bill, so they are deliberately NOT here.
+ */
+export const FREE_ROUTER_IDS: ReadonlySet<string> = new Set(["openrouter/free"]);
+
+/** True for ids that are free by construction on OpenRouter: `vendor/model:free` or the free router. */
+export const isFreeOpenRouterId = (id: string): boolean => id.endsWith(":free") || FREE_ROUTER_IDS.has(id);
 export const MODEL_CHARSET = /^[A-Za-z0-9][A-Za-z0-9._~:/+-]{0,99}$/;
 export const MAX_MODELS = 3;
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -41,7 +51,7 @@ export function parseModels(value: string | undefined): string[] | null {
     .map((m) => m.trim())
     .filter(Boolean);
   if (models.length < 1 || models.length > MAX_MODELS) return null;
-  return models.every((m) => FREE_MODEL_PATTERN.test(m)) ? models : null;
+  return models.every((m) => FREE_MODEL_PATTERN.test(m) || FREE_ROUTER_IDS.has(m)) ? models : null;
 }
 
 export const parseHosts = (value: string | undefined): string[] =>

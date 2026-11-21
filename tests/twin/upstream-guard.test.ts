@@ -54,7 +54,9 @@ describe("callOpenRouter", () => {
     expect(classifyError(429, "Rate limit exceeded: free-models-per-day")).toBe("quota_daily");
     expect(classifyError(429, "Too many requests")).toBe("rate_limited");
     expect(classifyError(500, "")).toBe("unavailable");
-    expect(classifyError(401, "")).toBe("unavailable");
+    expect(classifyError(502, "")).toBe("unavailable");
+    for (const status of [401, 403]) expect(classifyError(status, "")).toBe("rejected_key");
+    for (const status of [400, 404, 422]) expect(classifyError(status, "")).toBe("bad_request");
   });
 
   it("maps HTTP and in-body errors without leaking upstream text", async () => {
@@ -197,9 +199,12 @@ describe("config", () => {
   it("only accepts :free model ids, at most three", () => {
     expect(parseModels("meta-llama/llama-3.3-70b-instruct:free")).toEqual(["meta-llama/llama-3.3-70b-instruct:free"]);
     expect(parseModels("a/b:free, c/d:free ,e/f:free")).toHaveLength(3);
-    for (const bad of [undefined, "", "a/b", "a/b:paid", "a/b:free,c/d", "a/b:free,c/d:free,e/f:free,g/h:free", "../x:free", "openrouter/auto", "a/b:free;rm"]) {
+    for (const bad of [undefined, "", "a/b", "a/b:paid", "a/b:free,c/d", "a/b:free,c/d:free,e/f:free,g/h:free", "../x:free", "openrouter/auto", "openrouter/auto-code", "openrouter:free", "a/b:free;rm"]) {
       expect(parseModels(bad)).toBeNull();
     }
+    // OpenRouter's automatic free mode is the one router that is free by construction.
+    expect(parseModels("openrouter/free")).toEqual(["openrouter/free"]);
+    expect(parseModels("google/gemma-4-31b-it:free, openrouter/free")).toHaveLength(2);
   });
 
   it("fails closed when anything required is missing", () => {

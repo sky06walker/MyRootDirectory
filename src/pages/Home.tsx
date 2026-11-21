@@ -451,6 +451,7 @@ export const Home: React.FC<HomeProps> = ({ theme, toggleTheme }) => {
       <TwinLauncher
         owner={{
           name: cv.profile.name,
+          shortName: "Wei Hon", // how the owner introduces themselves in the twin dialog
           email: cv.contact.email,
           linkedin: cv.contact.linkedin ?? cv.profile.url,
           github: cv.contact.github,

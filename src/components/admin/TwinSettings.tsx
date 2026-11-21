@@ -16,7 +16,9 @@ const TEST_FAILURE_TEXT: Record<string, string> = {
   quota_daily: 'The provider says the daily free limit is used up.',
   rate_limited: 'The provider is limiting requests right now. Try again in a minute.',
   payment: 'The provider refused: a credits or billing problem.',
-  unavailable: 'Could not reach the provider, or it rejected the key. Check the URL, the model and the key.',
+  rejected_key: 'The provider refused the API key (or this key is not allowed to use that model). Check the key and paste it again.',
+  bad_request: 'The provider does not accept the request. Most often a model id is wrong: check every model id (OpenRouter ids look like vendor/model:free, or use openrouter/free) and the provider URL.',
+  unavailable: 'Could not reach the provider, or it had an internal error. Check the provider URL and try again in a minute.',
   timeout: 'The provider took too long to answer.',
   bad_response: 'The provider answered in a way the twin cannot use.',
 };
@@ -224,7 +226,8 @@ export const TwinSettings: React.FC = () => {
           />
         ))}
         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-          OpenRouter free models end in <code>:free</code>. Models are tried in order{isOpenRouter ? '' : ' (only the first is used with this provider)'}.
+          OpenRouter free models look like <code>vendor/model:free</code>. For the automatic free mode use <code>openrouter/free</code>.
+          Models are tried in order{isOpenRouter ? '' : ' (only the first is used with this provider)'}.
         </p>
         <label>
           <input type="checkbox" checked={form.allowPaid} onChange={(e) => set({ allowPaid: e.target.checked })} /> Allow paid models
