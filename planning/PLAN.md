@@ -341,7 +341,7 @@ A "Digital twin" card in `Admin.tsx`: on/off toggle (writes `twin_config.enabled
 
 **Phase 0 - Prerequisites (owner, dashboards)**
 - 0.1 OpenRouter: account; Settings → Privacy (D3, logging off); create a dedicated key (minimal credit limit); shortlist 2-3 `:free` models (≥ 16k context, decent instruction following, acceptable data policy); test `data_collection: "deny"`. *Done when:* the key is set as a Pages secret and the models are listed in the PR. (S)
-- 0.2 Turnstile widget (hostnames: custom domain and `cv-app.pages.dev`); `TURNSTILE_SECRET_KEY` secret and `VITE_TURNSTILE_SITE_KEY` var. (S)
+- 0.2 Turnstile widget (hostnames: custom domain and `myrootdirectory.pages.dev`); `TURNSTILE_SECRET_KEY` secret and `VITE_TURNSTILE_SITE_KEY` var. (S)
 - 0.3 `wrangler d1 create cv-twin`; separate preview KV namespace (O-2); WAF rate-limit rule; enable Workers Logs. (S)
 - 0.4 **Avatar:** DONE 2026-11-21: owner-supplied cartoon avatar exported to `public/twin/` (section 7.4). Remaining owner note: generation tool and licence in the PR description. (owner, S)
 

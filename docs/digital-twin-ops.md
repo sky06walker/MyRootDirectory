@@ -44,7 +44,7 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 ## One-time owner setup (nothing below can be done from code)
 
 1. **OpenRouter** (openrouter.ai): create an account and a **dedicated key**. In Settings -> Privacy turn **off** prompt logging/training options for free models. Pick 2-3 `:free` models (>= 16k context, good instruction following), then try `TWIN_DATA_COLLECTION_DENY=true` and check that answers still work. Optional but recommended: buy $10 of credits once, which raises the free-model cap (verify the current limits and that a minimal/$0 key credit limit still allows `:free` calls).
-2. **Turnstile** (Cloudflare dashboard): create a widget for your custom domain and `cv-app.pages.dev`.
+2. **Turnstile** (Cloudflare dashboard): create a widget for your custom domain and `myrootdirectory.pages.dev`.
 3. **D1:** `npx wrangler d1 create cv-twin`, then add to `wrangler.toml` (do this only once you have the real id: a placeholder would break deployments):
 
    ```toml
@@ -56,9 +56,9 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 4. **Secrets:**
 
    ```bash
-   npx wrangler pages secret put OPENROUTER_API_KEY --project-name cv-app
-   npx wrangler pages secret put TWIN_HMAC_SECRET --project-name cv-app     # node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
-   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name cv-app
+   npx wrangler pages secret put OPENROUTER_API_KEY --project-name myrootdirectory
+   npx wrangler pages secret put TWIN_HMAC_SECRET --project-name myrootdirectory     # node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
+   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name myrootdirectory
    ```
 5. **Plain settings** (`TWIN_MODELS`, `TWIN_ALLOWED_HOSTS`, caps) go in `wrangler.toml` under `[vars]` or in the Pages dashboard; use one place consistently. Leave `TWIN_ENABLED` unset for now.
 6. **Your content:** approve or edit the quick answers in `src/components/twin/starters.ts` (they are drafts), fix the typos in the CV text (the twin repeats what the CV says), and optionally give the twin extra facts (stories, working style, roles you want, notice period if you want it answered):

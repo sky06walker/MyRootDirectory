@@ -16,22 +16,25 @@ configured the admin API **fails closed** (401). The public CV and `GET /api/con
    Note your team domain: `<team>.cloudflareaccess.com` (shown under Settings -> Custom Pages / General).
 2. **Zero Trust -> Access -> Applications -> Add -> Self-hosted.** Create **ONE** application (one application = one AUD tag; the code checks a single AUD) with these destinations:
    - `<your-custom-domain>/admin` and `<your-custom-domain>/api/admin`
-   - the same two paths on `cv-app.pages.dev` (the production `*.pages.dev` host bypasses a custom-domain-only app)
-   - for previews: enable the Pages Access policy (Pages -> `cv-app` -> Settings -> General -> Access policy) or add `*.cv-app.pages.dev` with the same two paths
+   - the same two paths on `myrootdirectory.pages.dev` (the production `*.pages.dev` host bypasses a custom-domain-only app)
+   - for previews: enable the Pages Access policy (Pages -> `myrootdirectory` -> Settings -> General -> Access policy) or add `*.myrootdirectory.pages.dev` with the same two paths
 3. **Policy:** Action *Allow*, Include *Emails* = your own address(es) only. Pick a short-ish session duration.
 4. **Application cookie settings:** SameSite `Lax` (or `Strict`) and **HttpOnly** on. (The origin also rejects any state-changing request without a same-origin `Origin` header and a JSON content type, so this is a second layer.)
 5. Open the application's overview and copy the **Application Audience (AUD) Tag**.
 
 ## 2. Give the app its two values
 
-They are identifiers, not credentials, but keep them out of git. Set them as Pages secrets/variables (Production, and Preview if you use previews):
+They are public identifiers (the team domain and the application's AUD tag; both are visible in the Access sign-in redirect), not credentials. They live in `wrangler.toml` under `[vars]`:
 
-```bash
-npx wrangler pages secret put CF_ACCESS_TEAM_DOMAIN --project-name cv-app   # e.g. myteam.cloudflareaccess.com
-npx wrangler pages secret put CF_ACCESS_AUD --project-name cv-app           # the AUD tag from step 1.5
+```toml
+[vars]
+CF_ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"   # this project: c-weihon.cloudflareaccess.com
+CF_ACCESS_AUD = "<AUD tag from step 1.5>"
 ```
 
-`CF_ACCESS_TEAM_DOMAIN` must be `<team>.cloudflareaccess.com` (scheme and trailing slash are tolerated); anything else is rejected. Per-environment values (Production vs Preview) can also be managed in the dashboard under the project's Variables and Secrets. If you prefer `[vars]` in `wrangler.toml`, use that **or** secrets consistently, not both.
+**Why not the dashboard:** this repo has a `wrangler.toml` with `pages_build_output_dir`, so Pages treats that file as the source of truth for plain variables and bindings and **ignores plain variables typed into the dashboard**. That is exactly what produced "Access denied" even after signing in (the function log said `Cloudflare Access is not configured correctly`). Do not add same-named entries in the dashboard as well. Changing the file needs a new deployment (push to the production branch).
+
+`CF_ACCESS_TEAM_DOMAIN` must be `<team>.cloudflareaccess.com` (scheme and trailing slash are tolerated); anything else is rejected. The `name` at the top of `wrangler.toml` must be the real Pages project name (`myrootdirectory`).
 
 ## 3. Test before you deploy
 
@@ -42,12 +45,12 @@ npx wrangler pages secret put CF_ACCESS_AUD --project-name cv-app           # th
 curl -i https://<your-domain>/api/admin/verify                                   # expect 401
 curl -i -X POST -H "Content-Type: application/json" -H "Origin: https://<your-domain>" \
      -H "Cookie: auth=true" -d '{}' https://<your-domain>/api/admin/content       # expect 401
-curl -i https://cv-app.pages.dev/api/admin/verify                                 # expect 401
+curl -i https://myrootdirectory.pages.dev/api/admin/verify                                 # expect 401
 ```
 
 ## 4. Clean-up after the first successful deploy (owner actions)
 
-1. **Old deployments are still live.** Every earlier Pages deployment stays reachable at its own `<hash>.cv-app.pages.dev` URL **running the old code** (forgeable `auth=true` cookie, `admin123` fallback) against the same production KV. Delete the old deployments in the dashboard (Pages -> `cv-app` -> Deployments) and confirm none predates this change. List them with `npx wrangler pages deployment list --project-name cv-app`.
+1. **Old deployments are still live.** Every earlier Pages deployment stays reachable at its own `<hash>.myrootdirectory.pages.dev` URL **running the old code** (forgeable `auth=true` cookie, `admin123` fallback) against the same production KV. Delete the old deployments in the dashboard (Pages -> `myrootdirectory` -> Deployments) and confirm none predates this change. List them with `npx wrangler pages deployment list --project-name myrootdirectory`.
 2. **Never use Pages "Rollback" to a deployment from before this change**: it re-opens the hole. Roll forward with a fix instead.
 3. **Delete the obsolete password from production KV** (nothing reads it any more, and it is in git history):
 
