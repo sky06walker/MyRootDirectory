@@ -1,0 +1,22 @@
+# Copy to `.dev.vars` (git-ignored) for local development with `npx wrangler pages dev dist --d1 TWIN_DB`.
+# Values here are dummies: never put real keys in this example file.
+
+# Skips Cloudflare Access for requests whose hostname is localhost/127.0.0.1/[::1]
+# and that did not come through the Cloudflare edge. NEVER set this in Cloudflare Pages.
+ALLOW_INSECURE_LOCAL_AUTH=true
+
+# --- Digital twin (docs/digital-twin-ops.md), pointed at the local mock ---
+# Terminal 1: node scripts/mock-openrouter.mjs
+TWIN_ENABLED=true
+OPENROUTER_API_KEY=local-mock-key
+TWIN_MODELS=mock/mock-model:free
+# 32+ random characters, e.g. node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
+TWIN_HMAC_SECRET=replace-me-with-32-or-more-random-characters
+TWIN_REQUIRE_TURNSTILE=false
+# Honoured only for localhost requests without CF-Ray; ignored in production.
+TWIN_UPSTREAM_URL=http://127.0.0.1:8790/v1/chat/completions
+
+# Optional: exercise the real Access JWT check locally instead of the bypass
+# (leave ALLOW_INSECURE_LOCAL_AUTH out, then set both of these and send a real token).
+# CF_ACCESS_TEAM_DOMAIN=<your-team>.cloudflareaccess.com
+# CF_ACCESS_AUD=<application audience tag>

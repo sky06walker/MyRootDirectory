@@ -1,3 +1,5 @@
+export type Theme = "modern" | "custom";
+
 export interface Profile {
   name: string;
   title: string;

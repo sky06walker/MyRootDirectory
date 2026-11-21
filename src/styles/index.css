@@ -68,13 +68,6 @@
   margin-top: -2rem; /* Negate container padding if needed, or adjust structure */
 }
 
-/* Adjust container padding for custom theme to allow full bleed sidebar if desired, 
-   but for simplicity inside "container" class, we just style the sidebar box */
-[data-theme="custom"] .container {
-  max-width: 1000px; /* Wider for 2 cols */
-  padding: 0;
-}
-
 [data-theme="custom"] .cv-sidebar h1,
 [data-theme="custom"] .cv-sidebar h2,
 [data-theme="custom"] .cv-sidebar h3,
@@ -164,14 +157,9 @@ button {
 }
 
 [data-theme="custom"] .btn {
-  background-color: var(--color-primary);
-  color: white;
   border-radius: 0;
   text-transform: uppercase;
   letter-spacing: 1px;
-}
-[data-theme="custom"] .btn:hover {
-  background-color: var(--color-primary-hover);
 }
 
 .btn:hover {
@@ -227,7 +215,6 @@ button {
 
 @media print {
   .no-print,
-  header,
   button {
     display: none !important;
   }
@@ -268,5 +255,306 @@ button {
 
   [data-theme="custom"] header {
     flex-wrap: wrap;
+  }
+}
+
+/* ------------------------------------------------------------------ Digital twin (floating avatar + dialog) */
+/* Tokens only, so it follows modern light/dark and custom. Hidden in print via .no-print. */
+
+.twin-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.twin-launcher {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 900; /* below Modal (1000); the dialog itself uses the browser top layer */
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.twin-launcher img,
+.twin-launcher picture {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.twin-launcher:hover {
+  transform: translateY(-2px);
+}
+
+.twin-launcher:focus-visible,
+.twin-chip:focus-visible,
+.twin-close:focus-visible,
+.twin-bubble-close:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.twin-launcher.is-resting img {
+  filter: grayscale(1);
+  opacity: 0.75;
+}
+
+.twin-launcher.is-resting::after {
+  content: "zZ";
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  padding: 0 0.3rem;
+  border-radius: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .twin-launcher {
+    animation: twin-bob 4s ease-in-out infinite;
+  }
+  .twin-launcher:hover {
+    animation-play-state: paused;
+  }
+  .twin-header-avatar.is-thinking {
+    animation: twin-pulse 1s ease-in-out infinite;
+  }
+}
+
+@keyframes twin-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes twin-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.twin-bubble {
+  position: fixed;
+  right: calc(max(1rem, env(safe-area-inset-right)) + 76px);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 12px);
+  z-index: 900;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: min(240px, calc(100vw - 7rem));
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.twin-bubble-close,
+.twin-close {
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body.has-twin {
+  /* keep the last lines of the CV clear of the floating avatar on small screens */
+  padding-bottom: 5rem;
+}
+
+.twin-dialog {
+  position: fixed;
+  inset: auto;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 76px);
+  margin: 0;
+  width: min(380px, calc(100vw - 2rem));
+  max-width: none;
+  height: min(600px, calc(100dvh - 7rem)); /* use the room above the avatar, never overflow short windows */
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+  font-family: var(--font-body);
+}
+
+.twin-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.twin-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.twin-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.twin-header-avatar {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.twin-title {
+  flex: 1;
+  font-weight: bold;
+}
+
+.twin-disclosure {
+  padding: 0.4rem 1rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.twin-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.twin-empty {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.twin-msg {
+  max-width: 88%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.twin-msg p {
+  white-space: pre-wrap; /* plain text only: never rendered as HTML */
+  overflow-wrap: anywhere;
+}
+
+.twin-msg.user {
+  align-self: flex-end;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.twin-msg.assistant {
+  align-self: flex-start;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.twin-error {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid #dc2626;
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  font-size: 0.85rem;
+}
+
+.twin-chips {
+  /* suggested questions live inside the scrolling conversation, after the latest answer */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.twin-chip {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.twin-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.twin-form {
+  padding: 0 1rem 0.5rem;
+}
+
+.twin-input {
+  resize: none;
+}
+
+.twin-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+}
+
+.twin-count {
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+}
+
+.twin-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.4rem 1rem 0.6rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.78rem;
+}
+
+.twin-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .twin-dialog {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    max-height: 90dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 }

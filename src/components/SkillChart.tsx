@@ -17,7 +17,7 @@ export const SkillChart: React.FC<SkillChartProps> = ({ skills }) => {
                     <div style={{ flex: 1, height: '20px', backgroundColor: '#f0f0f0', position: 'relative', borderLeft: '1px solid #ccc' }}>
                         {/* Bar */}
                         <div style={{
-                            width: `${skill.level || 0}%`,
+                            width: `${skill.level ?? 0}%`,
                             height: '100%',
                             background: 'linear-gradient(to right, #ffffff, #93c5fd)',
                             display: 'flex',
@@ -26,7 +26,7 @@ export const SkillChart: React.FC<SkillChartProps> = ({ skills }) => {
                             paddingRight: '0.5rem',
                             boxSizing: 'border-box'
                         }}>
-                             <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{skill.level}%</span>
+                             <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{skill.level ?? 0}%</span>
                         </div>
                         {/* Vertical Grid Lines for visual reference (optional) */}
                         <div style={{position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: '1px solid #eee', width: '1px'}}></div>

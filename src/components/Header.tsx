@@ -1,29 +1,16 @@
-
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import type { Theme } from '../utils/types';
 
 interface HeaderProps {
     isAdmin?: boolean;
-    currentTheme?: 'modern' | 'custom';
+    currentTheme?: Theme;
     onToggleTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ isAdmin, currentTheme, onToggleTheme }) => {
-    const navigate = useNavigate();
-
-    const handleLogout = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        try {
-            await fetch('/api/logout', { method: 'POST' });
-            navigate('/');
-        } catch (error) {
-            console.error('Logout failed:', error);
-            navigate('/');
-        }
-    };
-
     return (
-        <header style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        <header className="no-print" style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
             <Link to="/" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
                 My Root Directory
             </Link>
@@ -33,10 +20,14 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin, currentTheme, onToggleT
                         Theme: {currentTheme === 'modern' ? 'Modern' : 'Custom'}
                     </button>
                 )}
-                
+
                 {isAdmin ? (
                     <>
-                        <a href="/" onClick={handleLogout} className="btn" style={{backgroundColor: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer'}}>View Mode</a>
+                        <Link to="/" className="btn" style={{backgroundColor: 'transparent', color: 'var(--color-text-primary)'}}>View Mode</Link>
+                        {/* Cloudflare Access endpoint; does not exist under `npm run dev` / local wrangler. */}
+                        {!import.meta.env.DEV && (
+                            <a href="/cdn-cgi/access/logout" className="btn" style={{backgroundColor: 'transparent', color: 'var(--color-text-primary)'}}>Sign out</a>
+                        )}
                         <span style={{padding: '0.5rem', fontWeight: 'bold', color: 'var(--color-primary)'}}>Admin Console</span>
                     </>
                 ) : (

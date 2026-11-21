@@ -1,24 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { verifySession } from '../utils/api';
 
 export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
     useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const res = await fetch('/api/verify');
-                if (res.ok) {
-                    setIsAuthenticated(true);
-                } else {
-                    setIsAuthenticated(false);
-                }
-            } catch (e) {
-                setIsAuthenticated(false);
-            }
-        };
-        checkAuth();
+        verifySession().then(setIsAuthenticated);
     }, []);
 
     if (isAuthenticated === null) {
@@ -26,7 +14,17 @@ export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        // Sign-in itself is handled by Cloudflare Access in front of /admin; if we are
+        // here the Access session is missing/expired or Access is not configured.
+        return (
+            <div className="container">
+                <h2>Access denied</h2>
+                <p>
+                    The admin console requires an active Cloudflare Access sign-in. Reload this page to
+                    sign in, or <Link to="/">return to the CV</Link>.
+                </p>
+            </div>
+        );
     }
 
     return children;

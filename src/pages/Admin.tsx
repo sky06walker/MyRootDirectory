@@ -1,25 +1,60 @@
-
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { INITIAL_CV_DATA, type CVData, type Experience, type Education, type Skill, type Language, type Certification } from '../utils/types';
-import { fetchCVData, saveCVData, changePassword } from '../utils/api';
+import React, { useEffect, useId, useState } from 'react';
+import { INITIAL_CV_DATA, type CVData, type Theme } from '../utils/types';
+import { fetchCVData, saveCVData } from '../utils/api';
 import { Header } from '../components/Header';
 
 interface AdminProps {
-    theme?: 'modern' | 'custom';
+    theme?: Theme;
 }
 
+type ListKey = 'experience' | 'education' | 'skills' | 'languages' | 'certifications';
+type ListItem<K extends ListKey> = CVData[K][number];
+
+const PROFICIENCY_LEVELS = ['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic'];
+
+const Field: React.FC<{
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    rows?: number;
+}> = ({ label, value, onChange, rows }) => {
+    const id = useId();
+    return (
+        <div className="form-group">
+            <label className="form-label" htmlFor={id}>{label}</label>
+            {rows
+                ? <textarea id={id} className="form-textarea" rows={rows} value={value} onChange={e => onChange(e.target.value)} />
+                : <input id={id} className="form-input" value={value} onChange={e => onChange(e.target.value)} />}
+        </div>
+    );
+};
+
+const SectionHeader: React.FC<{ title: string; onAdd: () => void }> = ({ title, onAdd }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <h3>{title}</h3>
+        <button className="btn" onClick={onAdd} style={{ fontSize: '0.8rem' }}>+ Add</button>
+    </div>
+);
+
+const RemoveButton: React.FC<{
+    label: string;
+    onClick: () => void;
+    style?: React.CSSProperties;
+    children: React.ReactNode;
+}> = ({ label, onClick, style, children }) => (
+    <button
+        onClick={onClick}
+        aria-label={label}
+        style={{ color: 'red', background: 'none', border: 'none', ...style }}
+    >
+        {children}
+    </button>
+);
+
 export const Admin: React.FC<AdminProps> = ({ theme }) => {
-    const navigate = useNavigate();
     const [cv, setCv] = useState<CVData>(INITIAL_CV_DATA);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    
-    // Password Change State
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [pwdData, setPwdData] = useState({ current: '', new: '', confirm: '' });
-    const [pwdError, setPwdError] = useState('');
-    const [pwdSuccess, setPwdSuccess] = useState('');
 
     useEffect(() => {
         fetchCVData().then(data => {
@@ -28,131 +63,54 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
         });
     }, []);
 
-    const handleChangePassword = async () => {
-        setPwdError('');
-        setPwdSuccess('');
-        if (!pwdData.current || !pwdData.new || !pwdData.confirm) {
-            setPwdError("All fields are required");
-            return;
-        }
-        if (pwdData.new !== pwdData.confirm) {
-            setPwdError("New passwords do not match");
-            return;
-        }
-        if (pwdData.new.length < 6) {
-            setPwdError("New password must be at least 6 characters");
-            return;
-        }
-
-        const res = await changePassword(pwdData.current, pwdData.new);
-        if (res.success) {
-            setPwdSuccess("Password changed successfully!");
-            setPwdData({ current: '', new: '', confirm: '' });
-            setTimeout(() => {
-                setShowPasswordModal(false);
-                setPwdSuccess('');
-            }, 1500);
-        } else {
-            setPwdError(res.error || "Failed to change password");
-        }
-    };
-
-    const handleSave = async (dataToSave?: CVData) => {
+    const handleSave = async () => {
         setSaving(true);
-        const success = await saveCVData(dataToSave || cv);
+        const result = await saveCVData(cv);
         setSaving(false);
-        if (success) {
+        if (result === 'ok') {
             alert('Saved successfully!');
-            // If we reset, update local state too
-            if (dataToSave) setCv(dataToSave);
+        } else if (result === 'unauthorized') {
+            // Keep this page (and the unsaved edits). The Cloudflare Access session
+            // cookie is shared across tabs, so signing in elsewhere is enough.
+            alert('Your sign-in has expired. Open /admin in a new tab to sign in again, then click Save here again. Your edits on this page are kept.');
         } else {
-            alert('Failed to save. You might be logged out.');
-            navigate('/login');
+            // Stay on the page so the unsaved edits are not lost.
+            alert('Failed to save. Please try again.');
         }
     };
 
-    const updateProfile = (field: keyof typeof cv.profile, value: string) => {
+    const updateProfile = (field: keyof CVData['profile'], value: string) => {
         setCv(prev => ({ ...prev, profile: { ...prev.profile, [field]: value } }));
     };
 
-    const updateContact = (field: keyof typeof cv.contact, value: string) => {
+    const updateContact = (field: keyof CVData['contact'], value: string) => {
         setCv(prev => ({ ...prev, contact: { ...prev.contact, [field]: value } }));
     };
 
-    // Experience Helpers
-    const addExperience = () => {
-        const newExp: Experience = { id: Date.now().toString(), company: '', role: '', startDate: '', endDate: '', description: '' };
-        setCv(prev => ({ ...prev, experience: [newExp, ...prev.experience] }));
+    // Generic helpers for the list sections (experience, education, skills, ...)
+    const addItem = <K extends ListKey>(key: K, item: ListItem<K>, atStart = false) => {
+        setCv(prev => {
+            const list = prev[key] as ListItem<K>[];
+            return { ...prev, [key]: atStart ? [item, ...list] : [...list, item] };
+        });
     };
-    const removeExperience = (id: string) => {
-        setCv(prev => ({ ...prev, experience: prev.experience.filter(e => e.id !== id) }));
-    };
-    const updateExperience = (id: string, field: keyof Experience, value: string) => {
+    const removeItem = (key: ListKey, id: string) => {
         setCv(prev => ({
             ...prev,
-            experience: prev.experience.map(e => e.id === id ? { ...e, [field]: value } : e)
+            [key]: (prev[key] as { id: string }[]).filter(item => item.id !== id),
+        }));
+    };
+    const updateItem = <K extends ListKey, F extends keyof ListItem<K>>(
+        key: K, id: string, field: F, value: ListItem<K>[F],
+    ) => {
+        setCv(prev => ({
+            ...prev,
+            [key]: (prev[key] as { id: string }[]).map(item =>
+                item.id === id ? { ...item, [field]: value } : item),
         }));
     };
 
-    // Education Helpers
-    const addEducation = () => {
-        const newEdu: Education = { id: Date.now().toString(), institution: '', degree: '', year: '' };
-        setCv(prev => ({ ...prev, education: [newEdu, ...prev.education] }));
-    };
-    const removeEducation = (id: string) => {
-        setCv(prev => ({ ...prev, education: prev.education.filter(e => e.id !== id) }));
-    };
-    const updateEducation = (id: string, field: keyof Education, value: string) => {
-        setCv(prev => ({
-            ...prev,
-            education: prev.education.map(e => e.id === id ? { ...e, [field]: value } : e)
-        }));
-    };
-
-    // Skill Helpers
-    const addSkill = () => {
-        const newSkill: Skill = { id: Date.now().toString(), name: '', category: 'other' };
-        setCv(prev => ({ ...prev, skills: [...prev.skills, newSkill] }));
-    };
-    const removeSkill = (id: string) => {
-        setCv(prev => ({ ...prev, skills: prev.skills.filter(s => s.id !== id) }));
-    };
-    const updateSkill = (id: string, field: keyof Skill, value: string | number) => {
-        setCv(prev => ({
-            ...prev,
-            skills: prev.skills.map(s => s.id === id ? { ...s, [field]: value } : s)
-        }));
-    };
-
-    // Language Helpers
-    const addLanguage = () => {
-        const newLang: Language = { id: Date.now().toString(), language: '', proficiency: '' };
-        setCv(prev => ({ ...prev, languages: [...prev.languages || [], newLang] }));
-    };
-    const removeLanguage = (id: string) => {
-        setCv(prev => ({ ...prev, languages: prev.languages.filter(l => l.id !== id) }));
-    };
-    const updateLanguage = (id: string, field: keyof Language, value: string) => {
-        setCv(prev => ({
-            ...prev,
-            languages: prev.languages.map(l => l.id === id ? { ...l, [field]: value } : l)
-        }));
-    };
-
-    // Certification Helpers
-    const addCertification = () => {
-        const newCert: Certification = { id: Date.now().toString(), name: '', year: '' };
-        setCv(prev => ({ ...prev, certifications: [...prev.certifications || [], newCert] }));
-    };
-    const removeCertification = (id: string) => {
-        setCv(prev => ({ ...prev, certifications: prev.certifications.filter(c => c.id !== id) }));
-    };
-    const updateCertification = (id: string, field: keyof Certification, value: string) => {
-        setCv(prev => ({
-            ...prev,
-            certifications: prev.certifications.map(c => c.id === id ? { ...c, [field]: value } : c)
-        }));
-    };
+    const newId = () => crypto.randomUUID();
 
     if (loading) return <div className="container">Loading...</div>;
 
@@ -161,195 +119,142 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
             <Header isAdmin currentTheme={theme} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1>Admin Console</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button className="btn" onClick={() => setShowPasswordModal(true)} style={{ backgroundColor: '#4b5563', borderColor: '#4b5563' }}>
-                        Change Password
-                    </button>
-                    <button className="btn" onClick={() => handleSave()} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
+                <button className="btn" onClick={handleSave} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                </button>
             </div>
-
-            {/* Change Password Modal */}
-            {showPasswordModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '400px', position: 'relative', backgroundColor: 'white', padding: '2rem' }}>
-                        <h3 style={{marginTop: 0}}>Change Password</h3>
-                        {pwdError && <div style={{color: 'red', marginBottom: '1rem'}}>{pwdError}</div>}
-                        {pwdSuccess && <div style={{color: 'green', marginBottom: '1rem'}}>{pwdSuccess}</div>}
-                        
-                        <div className="form-group">
-                            <label className="form-label">Current Password</label>
-                            <input type="password" className="form-input" value={pwdData.current} onChange={e => setPwdData({...pwdData, current: e.target.value})} />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">New Password</label>
-                            <input type="password" className="form-input" value={pwdData.new} onChange={e => setPwdData({...pwdData, new: e.target.value})} />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Confirm New Password</label>
-                            <input type="password" className="form-input" value={pwdData.confirm} onChange={e => setPwdData({...pwdData, confirm: e.target.value})} />
-                        </div>
-
-                        <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem'}}>
-                            <button className="btn" onClick={() => setShowPasswordModal(false)} style={{backgroundColor: '#ccc', color: 'black', border: '1px solid #999'}}>Cancel</button>
-                            <button className="btn" onClick={handleChangePassword}>Change Password</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             <div className="card">
                 <h3>Profile</h3>
                 <div className="form-group">
                     <label className="form-label">Photo</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                         {cv.profile.photo && <img src={cv.profile.photo} alt="Profile" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />}
-                         <input type="file" accept="image/*" onChange={e => {
-                             const file = e.target.files?.[0];
-                             if (file) {
-                                 const reader = new FileReader();
-                                 reader.onloadend = () => {
-                                     updateProfile('photo', reader.result as string);
-                                 };
-                                 reader.readAsDataURL(file);
-                             }
-                         }} />
+                        {cv.profile.photo && <img src={cv.profile.photo} alt="Profile" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />}
+                        <input type="file" accept="image/*" onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    updateProfile('photo', reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }} />
                     </div>
                 </div>
-                <div className="form-group"><label className="form-label">Name</label><input className="form-input" value={cv.profile.name} onChange={e => updateProfile('name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Title</label><input className="form-input" value={cv.profile.title} onChange={e => updateProfile('title', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Summary</label><textarea className="form-textarea" rows={3} value={cv.profile.summary} onChange={e => updateProfile('summary', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Location</label><input className="form-input" value={cv.profile.location} onChange={e => updateProfile('location', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Address</label><textarea className="form-textarea" rows={3} value={cv.profile.address || ''} onChange={e => updateProfile('address', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Website URL</label><input className="form-input" value={cv.profile.url} onChange={e => updateProfile('url', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">GitHub URL</label><input className="form-input" value={cv.contact.github || ''} onChange={e => updateContact('github', e.target.value)} /></div>
+                <Field label="Name" value={cv.profile.name} onChange={v => updateProfile('name', v)} />
+                <Field label="Title" value={cv.profile.title} onChange={v => updateProfile('title', v)} />
+                <Field label="Summary" rows={3} value={cv.profile.summary} onChange={v => updateProfile('summary', v)} />
+                <Field label="Location" value={cv.profile.location} onChange={v => updateProfile('location', v)} />
+                <Field label="Address" rows={3} value={cv.profile.address || ''} onChange={v => updateProfile('address', v)} />
+                <Field label="Website URL" value={cv.profile.url} onChange={v => updateProfile('url', v)} />
+                <Field label="GitHub URL" value={cv.contact.github || ''} onChange={v => updateContact('github', v)} />
             </div>
 
             <div className="card">
                 <h3>Contact</h3>
-                <div className="form-group"><label className="form-label">Email</label><input className="form-input" value={cv.contact.email} onChange={e => updateContact('email', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={cv.contact.phone} onChange={e => updateContact('phone', e.target.value)} /></div>
+                <Field label="Email" value={cv.contact.email} onChange={v => updateContact('email', v)} />
+                <Field label="Phone" value={cv.contact.phone} onChange={v => updateContact('phone', v)} />
             </div>
 
             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Experience</h3>
-                    <button className="btn" onClick={addExperience} style={{ fontSize: '0.8rem' }}>+ Add</button>
-                </div>
+                <SectionHeader title="Experience" onAdd={() => addItem('experience', { id: newId(), company: '', role: '', startDate: '', endDate: '', description: '' }, true)} />
                 {cv.experience.map(exp => (
                     <div key={exp.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', marginBottom: '1rem', borderRadius: 'var(--radius)' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: 1 }}>
-                                <input placeholder="Company" className="form-input" style={{ marginBottom: '1rem' }} value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} />
-                                <input placeholder="Role" className="form-input" style={{ marginBottom: '1rem' }} value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} />
+                                <input placeholder="Company" aria-label="Company" className="form-input" style={{ marginBottom: '1rem' }} value={exp.company} onChange={e => updateItem('experience', exp.id, 'company', e.target.value)} />
+                                <input placeholder="Role" aria-label="Role" className="form-input" style={{ marginBottom: '1rem' }} value={exp.role} onChange={e => updateItem('experience', exp.id, 'role', e.target.value)} />
                                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                                    <input placeholder="Start Date" className="form-input" value={exp.startDate} onChange={e => updateExperience(exp.id, 'startDate', e.target.value)} />
-                                    <input placeholder="End Date" className="form-input" value={exp.endDate} onChange={e => updateExperience(exp.id, 'endDate', e.target.value)} />
+                                    <input placeholder="Start Date" aria-label="Start Date" className="form-input" value={exp.startDate} onChange={e => updateItem('experience', exp.id, 'startDate', e.target.value)} />
+                                    <input placeholder="End Date" aria-label="End Date" className="form-input" value={exp.endDate} onChange={e => updateItem('experience', exp.id, 'endDate', e.target.value)} />
                                 </div>
-                                <textarea placeholder="Description" className="form-textarea" rows={3} value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} />
+                                <textarea placeholder="Description" aria-label="Description" className="form-textarea" rows={3} value={exp.description} onChange={e => updateItem('experience', exp.id, 'description', e.target.value)} />
                             </div>
-                            <button onClick={() => removeExperience(exp.id)} style={{ color: 'red', background: 'none', border: 'none', alignSelf: 'flex-start' }}>X</button>
+                            <RemoveButton label="Remove experience" onClick={() => removeItem('experience', exp.id)} style={{ alignSelf: 'flex-start' }}>X</RemoveButton>
                         </div>
                     </div>
                 ))}
             </div>
 
             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Education</h3>
-                    <button className="btn" onClick={addEducation} style={{ fontSize: '0.8rem' }}>+ Add</button>
-                </div>
+                <SectionHeader title="Education" onAdd={() => addItem('education', { id: newId(), institution: '', degree: '', year: '' }, true)} />
                 {cv.education.map(edu => (
                     <div key={edu.id} style={{ padding: '1rem', border: '1px solid var(--color-border)', marginBottom: '1rem', borderRadius: 'var(--radius)' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: 1 }}>
-                                <input placeholder="Institution" className="form-input" style={{ marginBottom: '1rem' }} value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} />
-                                <input placeholder="Degree" className="form-input" style={{ marginBottom: '1rem' }} value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} />
-                                <input placeholder="Year" className="form-input" value={edu.year} onChange={e => updateEducation(edu.id, 'year', e.target.value)} />
+                                <input placeholder="Institution" aria-label="Institution" className="form-input" style={{ marginBottom: '1rem' }} value={edu.institution} onChange={e => updateItem('education', edu.id, 'institution', e.target.value)} />
+                                <input placeholder="Degree" aria-label="Degree" className="form-input" style={{ marginBottom: '1rem' }} value={edu.degree} onChange={e => updateItem('education', edu.id, 'degree', e.target.value)} />
+                                <input placeholder="Year" aria-label="Year" className="form-input" value={edu.year} onChange={e => updateItem('education', edu.id, 'year', e.target.value)} />
                             </div>
-                            <button onClick={() => removeEducation(edu.id)} style={{ color: 'red', background: 'none', border: 'none', alignSelf: 'flex-start' }}>X</button>
+                            <RemoveButton label="Remove education" onClick={() => removeItem('education', edu.id)} style={{ alignSelf: 'flex-start' }}>X</RemoveButton>
                         </div>
                     </div>
                 ))}
             </div>
 
             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Skills</h3>
-                    <button className="btn" onClick={addSkill} style={{ fontSize: '0.8rem' }}>+ Add</button>
-                </div>
+                <SectionHeader title="Skills" onAdd={() => addItem('skills', { id: newId(), name: '', category: 'other' })} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                     {cv.skills.map(skill => (
                         <div key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--color-border)', padding: '0.5rem', borderRadius: '1rem' }}>
-                            <input 
-                                className="form-input" 
-                                style={{ border: 'none', padding: '0.25rem', width: '150px' }} 
-                                value={skill.name} 
-                                onChange={e => updateSkill(skill.id, 'name', e.target.value)} 
+                            <input
+                                className="form-input"
+                                style={{ border: 'none', padding: '0.25rem', width: '150px' }}
+                                value={skill.name}
+                                onChange={e => updateItem('skills', skill.id, 'name', e.target.value)}
                                 placeholder="Skill Name"
+                                aria-label="Skill name"
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderLeft: '1px solid #ddd', paddingLeft: '0.5rem' }}>
-                                <input 
-                                    type="number" 
-                                    min="0" 
+                                <input
+                                    type="number"
+                                    min="0"
                                     max="100"
-                                    className="form-input" 
-                                    style={{ border: 'none', padding: '0.25rem', width: '60px', textAlign: 'right' }} 
-                                    value={skill.level || 0} 
-                                    onChange={e => updateSkill(skill.id, 'level', parseInt(e.target.value) || 0)} 
+                                    className="form-input"
+                                    style={{ border: 'none', padding: '0.25rem', width: '60px', textAlign: 'right' }}
+                                    value={skill.level ?? 0}
+                                    onChange={e => updateItem('skills', skill.id, 'level', parseInt(e.target.value) || 0)}
                                     placeholder="%"
+                                    aria-label="Skill level percent"
                                 />
                                 <span style={{ fontSize: '0.8rem', color: '#666' }}>%</span>
                             </div>
-                            <button onClick={() => removeSkill(skill.id)} style={{ color: 'red', background: 'none', border: 'none', marginLeft: '0.5rem', cursor: 'pointer' }}>&times;</button>
+                            <RemoveButton label="Remove skill" onClick={() => removeItem('skills', skill.id)} style={{ marginLeft: '0.5rem', cursor: 'pointer' }}>&times;</RemoveButton>
                         </div>
                     ))}
                 </div>
             </div>
 
-             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Languages</h3>
-                    <button className="btn" onClick={addLanguage} style={{ fontSize: '0.8rem' }}>+ Add</button>
-                </div>
-                {cv.languages?.map(lang => (
+            <div className="card">
+                <SectionHeader title="Languages" onAdd={() => addItem('languages', { id: newId(), language: '', proficiency: '' })} />
+                {cv.languages.map(lang => (
                     <div key={lang.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                        <input className="form-input" placeholder="Language" value={lang.language} onChange={e => updateLanguage(lang.id, 'language', e.target.value)} />
-                        <select 
-                            className="form-input" 
-                            value={lang.proficiency} 
-                            onChange={e => updateLanguage(lang.id, 'proficiency', e.target.value)}
+                        <input className="form-input" placeholder="Language" aria-label="Language" value={lang.language} onChange={e => updateItem('languages', lang.id, 'language', e.target.value)} />
+                        <select
+                            className="form-input"
+                            aria-label="Proficiency"
+                            value={lang.proficiency}
+                            onChange={e => updateItem('languages', lang.id, 'proficiency', e.target.value)}
                         >
                             <option value="">Select Proficiency</option>
-                            <option value="Native">Native</option>
-                            <option value="Fluent">Fluent</option>
-                            <option value="Advanced">Advanced</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Basic">Basic</option>
-                            {!['Native', 'Fluent', 'Advanced', 'Intermediate', 'Basic', ''].includes(lang.proficiency) && (
+                            {PROFICIENCY_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
+                            {lang.proficiency && !PROFICIENCY_LEVELS.includes(lang.proficiency) && (
                                 <option value={lang.proficiency}>{lang.proficiency}</option>
                             )}
                         </select>
-                        <button onClick={() => removeLanguage(lang.id)} style={{ color: 'red', background: 'none', border: 'none' }}>&times;</button>
+                        <RemoveButton label="Remove language" onClick={() => removeItem('languages', lang.id)}>&times;</RemoveButton>
                     </div>
                 ))}
             </div>
 
             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                    <h3>Certifications</h3>
-                    <button className="btn" onClick={addCertification} style={{ fontSize: '0.8rem' }}>+ Add</button>
-                </div>
-                {cv.certifications?.map(cert => (
+                <SectionHeader title="Certifications" onAdd={() => addItem('certifications', { id: newId(), name: '', year: '' })} />
+                {cv.certifications.map(cert => (
                     <div key={cert.id} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                        <input className="form-input" placeholder="Certification Name" value={cert.name} onChange={e => updateCertification(cert.id, 'name', e.target.value)} />
-                        <input className="form-input" placeholder="Year" value={cert.year} onChange={e => updateCertification(cert.id, 'year', e.target.value)} />
-                        <button onClick={() => removeCertification(cert.id)} style={{ color: 'red', background: 'none', border: 'none' }}>&times;</button>
+                        <input className="form-input" placeholder="Certification Name" aria-label="Certification name" value={cert.name} onChange={e => updateItem('certifications', cert.id, 'name', e.target.value)} />
+                        <input className="form-input" placeholder="Year" aria-label="Certification year" value={cert.year} onChange={e => updateItem('certifications', cert.id, 'year', e.target.value)} />
+                        <RemoveButton label="Remove certification" onClick={() => removeItem('certifications', cert.id)}>&times;</RemoveButton>
                     </div>
                 ))}
             </div>
