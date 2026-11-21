@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Cloudflare Wrangler local state/bundler output (contains local KV data - never commit)
+.wrangler/
+
+# Local-only Wrangler/Pages secrets and dev flags
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
