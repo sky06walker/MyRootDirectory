@@ -82,7 +82,7 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 
 1. **AI provider account:** for the default, OpenRouter (openrouter.ai): create an account and a **dedicated key**; in Settings -> Privacy turn **off** prompt logging/training options for free models. Optional but recommended: buy $10 of credits once, which raises the free-model cap (verify the current limits). You will paste this key into the admin page, not into Cloudflare.
 2. **Turnstile** (Cloudflare dashboard): create a widget for `myrootdirectory.pages.dev` (and your custom domain, if any).
-3. **D1:** `npx wrangler d1 create cv-twin`, then add to `wrangler.toml` (do this only once you have the real id: a placeholder would break deployments):
+3. **D1:** *(done for this project: database `cv-twin` is bound as `TWIN_DB` in `wrangler.toml`)*. For a new project: `npx wrangler d1 create cv-twin`, then add to `wrangler.toml` (only once you have the real id: a placeholder would break deployments):
 
    ```toml
    [[d1_databases]]
@@ -97,7 +97,7 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
    npx wrangler pages secret put TWIN_HMAC_SECRET --project-name myrootdirectory
    npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name myrootdirectory
    ```
-5. **Plain settings** in `wrangler.toml` under `[vars]`: `TWIN_ALLOWED_HOSTS`, `VITE_TURNSTILE_SITE_KEY` and, if you want, the caps. Push to deploy.
+5. **Plain settings** in `wrangler.toml` under `[vars]`: `TWIN_ALLOWED_HOSTS`, `VITE_TURNSTILE_SITE_KEY` and, if you want, the caps. Push to deploy. *(Done for this project: host `myrootdirectory.pages.dev` and the Turnstile site key are set. Do not also create same-named entries in the dashboard: the deployment would fail with "Binding name ... already in use".)*
 6. **Your content:** approve or edit the quick answers in `src/components/twin/starters.ts` (they are drafts), fix the typos in the CV text (the twin repeats what the CV says), and optionally give the twin extra facts (stories, working style, roles you want, notice period if you want it answered):
 
    ```bash

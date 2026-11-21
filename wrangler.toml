@@ -10,7 +10,20 @@ pages_build_output_dir = "dist"
 ACCESS_TEAM_DOMAIN = "c-weihon.cloudflareaccess.com"
 ACCESS_AUD = "bf03e86d9e987c7ec86affac111094b2d6c74fd7446b9a479251681df8447b5a"
 
+# Digital twin (docs/digital-twin-ops.md). Public values only; the secrets (TWIN_CONFIG_ENC_KEY,
+# TWIN_HMAC_SECRET, TURNSTILE_SECRET_KEY) are added in the Pages dashboard as type Secret.
+# The host(s) allowed to call the public chat endpoint.
+TWIN_ALLOWED_HOSTS = "myrootdirectory.pages.dev"
+# Turnstile site key: public by design. Also read at build time (Vite) for the bot check in the chat dialog.
+VITE_TURNSTILE_SITE_KEY = "0x4AAAAAAGLh-v_cGTdv0Aly"
+
 [[kv_namespaces]]
 binding = "CV_DATA"
 id = "54cf53aaa5eb4ffa8694e3fcf0f70ec8"
 preview_id = "54cf53aaa5eb4ffa8694e3fcf0f70ec8"
+
+# Counters, the "resting" flag and the admin audit trail for the digital twin (tables are created on first use).
+[[d1_databases]]
+binding = "TWIN_DB"
+database_name = "cv-twin"
+database_id = "99959462-c994-41c8-bffb-8c8bb15460f4"
