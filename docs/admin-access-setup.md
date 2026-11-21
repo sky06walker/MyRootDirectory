@@ -28,13 +28,13 @@ They are public identifiers (the team domain and the application's AUD tag; both
 
 ```toml
 [vars]
-CF_ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"   # this project: c-weihon.cloudflareaccess.com
-CF_ACCESS_AUD = "<AUD tag from step 1.5>"
+ACCESS_TEAM_DOMAIN = "<team>.cloudflareaccess.com"   # this project: c-weihon.cloudflareaccess.com
+ACCESS_AUD = "<AUD tag from step 1.5>"
 ```
 
-**Why not the dashboard:** this repo has a `wrangler.toml` with `pages_build_output_dir`, so Pages treats that file as the source of truth for plain variables and bindings and **ignores plain variables typed into the dashboard**. That is exactly what produced "Access denied" even after signing in (the function log said `Cloudflare Access is not configured correctly`). Do not add same-named entries in the dashboard as well. Changing the file needs a new deployment (push to the production branch).
+**Why `wrangler.toml` and why the names `ACCESS_*`:** this repo has a `wrangler.toml` with `pages_build_output_dir`, so Pages reads variables from that file and the dashboard's variable list becomes read-only. In this project the dashboard already held entries named `CF_ACCESS_AUD` / `CF_ACCESS_TEAM_DOMAIN` (added by hand before the file defined any variables). Declaring `[vars]` with those exact names failed the deployment with `Binding name 'CF_ACCESS_AUD' already in use`, and the dashboard entries could not be deleted. The settings therefore use different names, `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`, which cannot clash; the old `CF_ACCESS_*` dashboard entries are unused and can be ignored. Changing the file needs a new deployment (push to the production branch).
 
-`CF_ACCESS_TEAM_DOMAIN` must be `<team>.cloudflareaccess.com` (scheme and trailing slash are tolerated); anything else is rejected. The `name` at the top of `wrangler.toml` must be the real Pages project name (`myrootdirectory`).
+`ACCESS_TEAM_DOMAIN` must be `<team>.cloudflareaccess.com` (scheme and trailing slash are tolerated); anything else is rejected. The `name` at the top of `wrangler.toml` must be the real Pages project name (`myrootdirectory`).
 
 ## 3. Test before you deploy
 
@@ -76,6 +76,7 @@ npm run build && npx wrangler pages dev dist
 ## 6. Audit and troubleshooting
 
 - Every successful content save logs one JSON line `{"event":"cv_content_updated","actor":"<email>","at":"..."}` (content is never logged). These lines only persist if Workers Logs / Logpush is enabled for the Pages project, and retention is short; Access's own audit log (Zero Trust -> Logs -> Access) is the long-term record of sign-ins.
-- **"Access denied" in the admin UI** after signing in: check the function logs. `Cloudflare Access is not configured correctly` means a missing/invalid `CF_ACCESS_TEAM_DOMAIN` or `CF_ACCESS_AUD`; `Access JWT verification error` means a bad/foreign token; no log line plus 401 means the request carried no `Cf-Access-Jwt-Assertion` (the path is not covered by the Access application).
+- **"Access denied" in the admin UI** after signing in: check the function logs. `Cloudflare Access is not configured correctly` means a missing/invalid `ACCESS_TEAM_DOMAIN` or `ACCESS_AUD`; `Access JWT verification error` means a bad/foreign token; no log line plus 401 means the request carried no `Cf-Access-Jwt-Assertion` (the path is not covered by the Access application).
 - **Session expired while editing:** the Access cookie is shared across tabs, so open `/admin` in a new tab to sign in again, then press Save in the original tab; the edits there are kept.
+- **Deployment fails with `Binding name '<NAME>' already in use`:** the same name exists both in `wrangler.toml` `[vars]` and in the dashboard (Settings -> Variables and Secrets). Dashboard entries are read-only while `wrangler.toml` manages variables, so rename the variable in `wrangler.toml` (and in the code that reads it) instead of trying to delete the dashboard entry. A failed deployment never replaces the live one, so the site keeps serving the last successful deployment meanwhile.
 - Signing keys rotate: an unknown key id triggers one JWKS refresh (rate-limited to once a minute); keys are otherwise cached for an hour.

@@ -9,7 +9,7 @@
 
 ## 0. Remediation update: critical findings S-1, S-2, S-3
 
-Implemented as recommended in section 4 (Cloudflare Access instead of custom auth). **The code is done and verified, but the fixes only take effect once the owner completes the Cloudflare-side steps in [`docs/admin-access-setup.md`](docs/admin-access-setup.md)** (create the Access application, set `CF_ACCESS_TEAM_DOMAIN` / `CF_ACCESS_AUD`, delete old deployments, delete the old KV password). Until then the admin API fails closed: the public CV works, but nobody can edit it.
+Implemented as recommended in section 4 (Cloudflare Access instead of custom auth). **The code is done and verified, but the fixes only take effect once the owner completes the Cloudflare-side steps in [`docs/admin-access-setup.md`](docs/admin-access-setup.md)** (create the Access application, set `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`, delete old deployments, delete the old KV password). Until then the admin API fails closed: the public CV works, but nobody can edit it.
 
 | Finding | Status | What was done |
 |---|---|---|

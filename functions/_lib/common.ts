@@ -1,9 +1,9 @@
 export interface Env {
   CV_DATA: KVNamespace;
   /** Cloudflare Zero Trust team domain, e.g. "myteam.cloudflareaccess.com". */
-  CF_ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_TEAM_DOMAIN?: string;
   /** Application Audience (AUD) tag of the single Access application protecting /admin and /api/admin. */
-  CF_ACCESS_AUD?: string;
+  ACCESS_AUD?: string;
   /** Local development only ("true" in git-ignored .dev.vars). Honoured on localhost only, never via the edge. */
   ALLOW_INSECURE_LOCAL_AUTH?: string;
 
@@ -174,11 +174,11 @@ export async function authenticate(
 ): Promise<AdminIdentity | null> {
   if (isLocalDevBypass(request, env)) return { actor: "local-dev" };
 
-  const domain = env.CF_ACCESS_TEAM_DOMAIN?.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-  const audience = env.CF_ACCESS_AUD?.trim();
+  const domain = env.ACCESS_TEAM_DOMAIN?.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  const audience = env.ACCESS_AUD?.trim();
   if (!domain || !audience || !TEAM_DOMAIN_PATTERN.test(domain)) {
     console.error(
-      "Cloudflare Access is not configured correctly (CF_ACCESS_TEAM_DOMAIN must be <team>.cloudflareaccess.com and CF_ACCESS_AUD must be set); denying admin access",
+      "Cloudflare Access is not configured correctly (ACCESS_TEAM_DOMAIN must be <team>.cloudflareaccess.com and ACCESS_AUD must be set); denying admin access",
     );
     return null;
   }

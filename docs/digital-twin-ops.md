@@ -87,7 +87,7 @@ npm run build && npx wrangler pages dev dist --d1 TWIN_DB   # terminal 2
 
 In the mock, keywords in the question trigger behaviours: `QUOTA` (daily limit -> resting), `THROTTLE`,
 `PAYMENT`, `BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup). `GET http://127.0.0.1:8790/last`
-shows the last request, including the real system prompt. Tests: `npm test` (63 tests, no network).
+shows the last request, including the real system prompt. Tests: `npm test` (no network).
 
 ## Not built yet (deliberately deferred, see planning/PLAN.md "Revision 2")
 

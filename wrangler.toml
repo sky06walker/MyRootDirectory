@@ -3,12 +3,12 @@ compatibility_date = "2024-01-01"
 pages_build_output_dir = "dist"
 
 # Cloudflare Access (see docs/admin-access-setup.md). Public identifiers, not credentials: the team
-# domain and the Access application's Audience (AUD) tag. They live here because, with a Wrangler
-# config file present, Pages uses this file as the source of truth and ignores plain variables set
-# in the dashboard. Do not also add same-named entries in the dashboard.
+# domain and the Access application's Audience (AUD) tag. They are deliberately named ACCESS_*: the
+# dashboard already holds locked, undeletable entries called CF_ACCESS_*, and deploying [vars] with
+# those names fails ("Binding name ... already in use"). Never reuse a name that exists in the dashboard.
 [vars]
-CF_ACCESS_TEAM_DOMAIN = "c-weihon.cloudflareaccess.com"
-CF_ACCESS_AUD = "bf03e86d9e987c7ec86affac111094b2d6c74fd7446b9a479251681df8447b5a"
+ACCESS_TEAM_DOMAIN = "c-weihon.cloudflareaccess.com"
+ACCESS_AUD = "bf03e86d9e987c7ec86affac111094b2d6c74fd7446b9a479251681df8447b5a"
 
 [[kv_namespaces]]
 binding = "CV_DATA"
