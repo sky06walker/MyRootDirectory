@@ -259,7 +259,21 @@ button {
 }
 
 /* ------------------------------------------------------------------ Digital twin (floating avatar + dialog) */
-/* Tokens only, so it follows modern light/dark and custom. Hidden in print via .no-print. */
+/* Friendly look: warm peach/coral accents taken from the avatar, soft rounded bubbles, a typing
+   indicator and a lively avatar. Surfaces, borders and text still follow the theme tokens, so it
+   adapts to modern light/dark and custom. EVERY animation lives inside a
+   prefers-reduced-motion: no-preference block; hidden in print via .no-print. */
+
+.twin-launcher,
+.twin-bubble,
+.twin-dialog {
+  --twin-accent: #d4501e; /* white text on it: 4.9:1 */
+  --twin-accent-2: #c2185b;
+  --twin-gradient: linear-gradient(135deg, #d4501e, #c2185b);
+  --twin-peach: #ffd9b8;
+  --twin-pink: #ffc2d1;
+  --twin-ink: #2b1b17;
+}
 
 .twin-sr-only {
   position: absolute;
@@ -269,6 +283,8 @@ button {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- launcher (the floating avatar) */
 
 .twin-launcher {
   position: fixed;
@@ -281,28 +297,60 @@ button {
   border: 0;
   border-radius: 50%;
   background: transparent;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 18px rgb(212 80 30 / 0.35);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.twin-launcher img,
-.twin-launcher picture {
+.twin-launcher picture,
+.twin-launcher > img {
   display: block;
   width: 64px;
   height: 64px;
   border-radius: 50%;
 }
 
+.twin-launcher img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+/* an "invite" ring that slowly pulses outwards */
+.twin-launcher::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--twin-accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.twin-sparkle {
+  position: absolute;
+  font-size: 14px;
+  line-height: 1;
+  color: #ffb347;
+  opacity: 0;
+  pointer-events: none;
+}
+.twin-sparkle.s1 { top: -6px; left: -6px; }
+.twin-sparkle.s2 { top: -10px; right: 4px; font-size: 11px; }
+.twin-sparkle.s3 { bottom: 4px; left: -12px; font-size: 10px; }
+
 .twin-launcher:hover {
-  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgb(212 80 30 / 0.5);
 }
 
 .twin-launcher:focus-visible,
 .twin-chip:focus-visible,
 .twin-close:focus-visible,
-.twin-bubble-close:focus-visible {
-  outline: 3px solid var(--color-primary);
+.twin-bubble-close:focus-visible,
+.twin-send:focus-visible,
+.twin-footer a:focus-visible {
+  outline: 3px solid var(--twin-accent);
   outline-offset: 3px;
 }
 
@@ -325,55 +373,50 @@ button {
   font-weight: bold;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .twin-launcher {
-    animation: twin-bob 4s ease-in-out infinite;
-  }
-  .twin-launcher:hover {
-    animation-play-state: paused;
-  }
-  .twin-header-avatar.is-thinking {
-    animation: twin-pulse 1s ease-in-out infinite;
-  }
-}
-
-@keyframes twin-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes twin-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-}
-
+/* greeting bubble next to the avatar */
 .twin-bubble {
   position: fixed;
-  right: calc(max(1rem, env(safe-area-inset-right)) + 76px);
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 12px);
+  right: calc(max(1rem, env(safe-area-inset-right)) + 80px);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 14px);
   z-index: 900;
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  max-width: min(240px, calc(100vw - 7rem));
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  box-shadow: var(--shadow-md);
-  font-size: 0.85rem;
+  max-width: min(250px, calc(100vw - 8rem));
+  padding: 0.65rem 0.8rem;
+  border-radius: 18px 18px 4px 18px;
+  background: linear-gradient(135deg, var(--twin-peach), var(--twin-pink));
+  color: var(--twin-ink);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.22);
+  font-size: 0.88rem;
+  font-weight: 600;
   line-height: 1.4;
+}
+
+.twin-bubble::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  bottom: 12px;
+  width: 12px;
+  height: 12px;
+  background: var(--twin-pink);
+  border-radius: 2px;
+  transform: rotate(45deg);
 }
 
 .twin-bubble-close,
 .twin-close {
   border: 0;
   background: none;
-  color: var(--color-text-secondary);
+  color: inherit;
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.twin-bubble-close {
+  opacity: 0.6;
 }
 
 body.has-twin {
@@ -381,23 +424,27 @@ body.has-twin {
   padding-bottom: 5rem;
 }
 
+/* ---------------------------------------------------------------- dialog */
+
 .twin-dialog {
   position: fixed;
   inset: auto;
   right: max(1rem, env(safe-area-inset-right));
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 76px);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 82px);
   margin: 0;
-  width: min(380px, calc(100vw - 2rem));
+  width: min(392px, calc(100vw - 2rem));
   max-width: none;
-  height: min(600px, calc(100dvh - 7rem)); /* use the room above the avatar, never overflow short windows */
+  height: min(640px, calc(100dvh - 7.5rem)); /* use the room above the avatar, never overflow short windows */
   max-height: none;
   padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border: 0;
+  border-radius: 24px;
+  overflow: hidden;
   background: var(--color-surface);
   color: var(--color-text-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.35), 0 0 0 1px var(--color-border);
   font-family: var(--font-body);
+  transform-origin: bottom right;
 }
 
 .twin-dialog[open] {
@@ -406,58 +453,143 @@ body.has-twin {
 }
 
 .twin-dialog::backdrop {
-  background: rgb(0 0 0 / 0.35);
+  background: rgb(30 15 10 / 0.38);
+  backdrop-filter: blur(2px);
 }
 
+/* header: warm gradient, big avatar with an "online" dot */
 .twin-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border);
+  gap: 0.8rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(135deg, var(--twin-peach), var(--twin-pink));
+  color: var(--twin-ink);
+}
+
+.twin-header-avatar-wrap {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
 }
 
 .twin-header-avatar {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
+  border: 3px solid #fff;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
+.twin-online {
+  position: absolute;
+  right: -1px;
+  bottom: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #22c55e;
+}
+
+.twin-dialog[data-resting] .twin-online {
+  background: #9ca3af;
+}
+
+.twin-title-wrap {
+  flex: 1;
+  min-width: 0;
 }
 
 .twin-title {
-  flex: 1;
-  font-weight: bold;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
+.twin-subtitle {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.twin-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.55);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.twin-close:hover {
+  background: rgb(255 255 255 / 0.9);
+  transform: rotate(90deg);
+}
+
+/* the privacy / accuracy note, kept visible but soft */
 .twin-disclosure {
-  padding: 0.4rem 1rem;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  margin: 0.65rem 0.8rem 0;
+  padding: 0.5rem 0.75rem 0.5rem 2.05rem;
+  border-radius: 14px;
+  /* a warm see-through tint works on both light and dark surfaces */
+  background: rgb(255 150 110 / 0.14);
+  border: 1px solid rgb(255 150 110 / 0.22);
   color: var(--color-text-secondary);
   font-size: 0.7rem;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
+.twin-disclosure::before {
+  content: "\24D8"; /* circled i */
+  position: absolute;
+  left: 0.7rem;
+  top: 0.4rem;
+  font-size: 1rem;
+  color: var(--twin-accent);
+}
+
+/* conversation */
 .twin-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0.6rem;
+  padding: 0.9rem 0.9rem 0.5rem;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
-.twin-empty {
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
+.twin-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.twin-row.user {
+  justify-content: flex-end;
+}
+
+.twin-mini-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
 }
 
 .twin-msg {
-  max-width: 88%;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
-  font-size: 0.9rem;
+  max-width: 82%;
+  padding: 0.55rem 0.85rem;
+  border-radius: 18px;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .twin-msg p {
@@ -466,85 +598,328 @@ body.has-twin {
 }
 
 .twin-msg.user {
-  align-self: flex-end;
-  background: var(--color-primary);
+  background: var(--twin-gradient);
   color: #fff;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 3px 10px rgb(194 24 91 / 0.25);
 }
 
 .twin-msg.assistant {
-  align-self: flex-start;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
+  border-bottom-left-radius: 6px;
+}
+
+.twin-msg.twin-welcome {
+  background: linear-gradient(135deg, rgb(255 190 140 / 0.24), rgb(255 150 180 / 0.24));
+  border-color: rgb(255 150 120 / 0.3);
+  color: var(--color-text-primary);
+}
+
+/* typing indicator */
+.twin-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.75rem 0.95rem;
+}
+
+.twin-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--twin-accent);
+  opacity: 0.55;
+}
+
+.twin-hint {
+  margin: -0.2rem 0 0 36px;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
 }
 
 .twin-error {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-left: 4px solid #dc2626;
-  border-radius: var(--radius);
-  background: var(--color-bg);
+  margin-left: 36px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, #dc2626 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, #dc2626 35%, var(--color-border));
   font-size: 0.85rem;
 }
 
+/* topic chips (quick answers) */
 .twin-chips {
-  /* suggested questions live inside the scrolling conversation, after the latest answer */
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.25rem;
+  gap: 0.45rem;
+  margin: 0.25rem 0 0 36px;
 }
 
 .twin-chip {
-  padding: 0.3rem 0.65rem;
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text-primary);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .twin-chip:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  transform: translateY(-2px);
+  border-color: var(--twin-accent);
+  background: color-mix(in srgb, var(--twin-peach) 35%, var(--color-surface));
+  box-shadow: 0 4px 10px rgb(212 80 30 / 0.18);
 }
 
+.twin-chip:active {
+  transform: scale(0.96);
+}
+
+/* message box: a rounded pill with a round send button */
 .twin-form {
-  padding: 0 1rem 0.5rem;
+  padding: 0.55rem 0.8rem 0.2rem;
+}
+
+.twin-input-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.95rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 24px;
+  background: var(--color-bg);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.twin-input-wrap:focus-within {
+  border-color: var(--twin-accent);
+  box-shadow: 0 0 0 3px rgb(212 80 30 / 0.18);
 }
 
 .twin-input {
+  flex: 1;
+  min-width: 0;
+  max-height: 6.5rem;
+  padding: 0.4rem 0;
+  border: 0;
+  outline: 0;
   resize: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
 }
 
-.twin-form-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 0.4rem;
+.twin-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.twin-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--twin-gradient);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.twin-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.twin-send svg {
+  width: 18px;
+  height: 18px;
 }
 
 .twin-count {
+  display: block;
+  margin: 0.15rem 0.6rem 0;
+  text-align: right;
   color: var(--color-text-secondary);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
 }
 
 .twin-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 0.75rem;
-  padding: 0.4rem 1rem 0.6rem;
-  border-top: 1px solid var(--color-border);
+  gap: 0.4rem;
+  padding: 0.25rem 0.8rem 0.8rem;
   font-size: 0.78rem;
 }
 
 .twin-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  overflow-wrap: anywhere;
+  display: contents;
+}
+
+.twin-footer a {
+  padding: 0.22rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  text-decoration: none;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.twin-footer a:hover {
+  transform: translateY(-1px);
+  border-color: var(--twin-accent);
+  text-decoration: none;
+}
+
+/* ---------------------------------------------------------------- motion (only when the visitor allows it) */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* launcher: floats, rings out an invitation, waves now and then, sparkles; jumps on hover */
+  .twin-launcher {
+    animation: twin-float 4.5s ease-in-out infinite;
+  }
+  .twin-launcher::before {
+    animation: twin-ring 3.4s ease-out infinite;
+  }
+  .twin-launcher picture,
+  .twin-launcher > img {
+    transform-origin: 70% 90%;
+    animation: twin-wave 9s ease-in-out infinite;
+  }
+  .twin-sparkle {
+    animation: twin-twinkle 3s ease-in-out infinite;
+  }
+  .twin-sparkle.s2 { animation-delay: 1s; }
+  .twin-sparkle.s3 { animation-delay: 2s; }
+  .twin-launcher:hover {
+    animation: none;
+    transform: translateY(-5px) scale(1.1);
+  }
+  .twin-launcher:hover picture,
+  .twin-launcher:hover > img {
+    animation: twin-wiggle 0.7s ease-in-out infinite;
+  }
+  .twin-launcher.is-resting,
+  .twin-launcher.is-resting::before,
+  .twin-launcher.is-resting picture,
+  .twin-launcher.is-resting > img,
+  .twin-launcher.is-resting .twin-sparkle {
+    animation: none;
+  }
+
+  .twin-bubble {
+    animation: twin-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* dialog */
+  .twin-dialog[open] {
+    animation: twin-open 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .twin-dialog[open]::backdrop {
+    animation: twin-fade 0.25s ease-out;
+  }
+  .twin-header-avatar {
+    animation: twin-float-small 3.6s ease-in-out infinite;
+  }
+  .twin-header-avatar.is-thinking {
+    animation: twin-think 1.1s ease-in-out infinite;
+  }
+  .twin-header-avatar.is-happy {
+    animation: twin-hop 0.75s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+  .twin-row {
+    animation: twin-message-in 0.3s ease-out both;
+  }
+  .twin-typing span {
+    animation: twin-dot 1s ease-in-out infinite;
+  }
+  .twin-typing span:nth-child(2) { animation-delay: 0.15s; }
+  .twin-typing span:nth-child(3) { animation-delay: 0.3s; }
+  .twin-send:not(:disabled):hover {
+    transform: scale(1.1) rotate(-10deg);
+  }
+}
+
+@keyframes twin-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes twin-float-small {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes twin-ring {
+  0% { transform: scale(0.92); opacity: 0.55; }
+  70%, 100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* a quick wave of the whole picture every few seconds, then calm again */
+@keyframes twin-wave {
+  0%, 84%, 100% { transform: rotate(0); }
+  87% { transform: rotate(-10deg) scale(1.04); }
+  90% { transform: rotate(9deg) scale(1.04); }
+  93% { transform: rotate(-6deg); }
+  96% { transform: rotate(3deg); }
+}
+
+@keyframes twin-wiggle {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  50% { transform: rotate(10deg); }
+  75% { transform: rotate(-6deg); }
+}
+
+@keyframes twin-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(25deg); }
+}
+
+@keyframes twin-pop {
+  from { opacity: 0; transform: scale(0.6) translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes twin-open {
+  from { opacity: 0; transform: translateY(26px) scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes twin-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes twin-think {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  50% { transform: rotate(7deg) translateY(-3px); }
+}
+
+@keyframes twin-hop {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-11px) scale(1.12); }
+  70% { transform: translateY(0) scale(0.96); }
+  100% { transform: none; }
+}
+
+@keyframes twin-message-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes twin-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
 }
 
 @media (max-width: 768px) {
@@ -554,7 +929,8 @@ body.has-twin {
     left: 0;
     width: 100%;
     height: auto;
-    max-height: 90dvh;
-    border-radius: var(--radius) var(--radius) 0 0;
+    max-height: 92dvh;
+    border-radius: 24px 24px 0 0;
+    transform-origin: bottom center;
   }
 }

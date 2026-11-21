@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface TwinAvatarProps {
   /** Content hash of the custom avatar saved in the admin page; empty = built-in picture. */
   hash?: string | null;
-  size: 64 | 40;
+  size: 64 | 52 | 40 | 28;
   className?: string;
 }
 

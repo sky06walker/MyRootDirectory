@@ -94,7 +94,7 @@ export const TwinLauncher: React.FC<{ owner: TwinOwner }> = ({ owner }) => {
       {greeting && !open && (
         <div className="twin-bubble no-print" role="status">
           <span>
-            Hi! I'm {owner.name}'s AI twin. Ask me about my experience.
+            Hi! 👋 I'm {owner.shortName ?? owner.name}'s digital twin. Ask me anything about my work!
           </span>
           <button type="button" className="twin-bubble-close" onClick={dismissGreeting} aria-label="Dismiss greeting">
             &times;
@@ -116,6 +116,10 @@ export const TwinLauncher: React.FC<{ owner: TwinOwner }> = ({ owner }) => {
         title={resting ? 'Resting right now: you can still read my quick answers' : undefined}
       >
         <TwinAvatar hash={status?.avatarHash} size={64} />
+        {/* decorative twinkles around the avatar (animated only when the visitor allows motion) */}
+        <span className="twin-sparkle s1" aria-hidden="true">✦</span>
+        <span className="twin-sparkle s2" aria-hidden="true">✦</span>
+        <span className="twin-sparkle s3" aria-hidden="true">✦</span>
       </button>
 
       {requested && (
