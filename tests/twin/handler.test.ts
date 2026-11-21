@@ -286,7 +286,7 @@ describe("handleStatus", () => {
     expect((await status(makeEnv({ OPENROUTER_API_KEY: undefined }))).data).toEqual({ enabled: false });
     expect((await status(makeEnv(), undefined, "https://cv-app.pages.dev/api/chat/status")).data).toEqual({ enabled: false });
     const ok = await status();
-    expect(ok.data).toEqual({ enabled: true, available: true });
+    expect(ok.data).toEqual({ enabled: true, available: true, avatarHash: null });
     expect(ok.res.headers.get("Cache-Control")).toBe("public, max-age=30");
 
     const store = new MemoryStore(() => NOW);

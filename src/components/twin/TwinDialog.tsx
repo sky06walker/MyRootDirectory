@@ -3,6 +3,7 @@ import { ExternalLink } from '../ExternalLink';
 import { askTwin, type AskResult, type TwinMessage } from '../../utils/twinApi';
 import { getTurnstileToken } from '../../utils/turnstile';
 import { STARTERS } from './starters';
+import { TwinAvatar } from './TwinAvatar';
 import type { TwinOwner } from './TwinLauncher';
 
 interface TwinDialogProps {
@@ -12,6 +13,7 @@ interface TwinDialogProps {
   /** The AI is out of quota: quick answers and email still work. */
   resting: boolean;
   resetsAt?: string;
+  avatarHash?: string | null;
 }
 
 interface ChatItem extends TwinMessage {
@@ -56,7 +58,7 @@ function errorText(result: Extract<AskResult, { ok: false }>, ownerName: string)
   }
 }
 
-const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, resetsAt }) => {
+const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, resetsAt, avatarHash }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const captchaRef = useRef<HTMLDivElement>(null);
@@ -162,17 +164,7 @@ const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, 
       }}
     >
       <header className="twin-header">
-        <picture>
-          <source type="image/webp" srcSet="/twin/avatar-64.webp 1x, /twin/avatar-128.webp 2x" />
-          <img
-            src="/twin/avatar-64.png"
-            srcSet="/twin/avatar-64.png 1x, /twin/avatar-128.png 2x"
-            width={40}
-            height={40}
-            alt=""
-            className={`twin-header-avatar${busy ? ' is-thinking' : ''}`}
-          />
-        </picture>
+        <TwinAvatar hash={avatarHash} size={40} className={`twin-header-avatar${busy ? ' is-thinking' : ''}`} />
         <p id="twin-title" className="twin-title">Ask my digital twin</p>
         <button type="button" className="twin-close" onClick={onClose} aria-label="Close chat">
           &times;
@@ -181,8 +173,8 @@ const TwinDialog: React.FC<TwinDialogProps> = ({ open, onClose, owner, resting, 
 
       <p className="twin-disclosure">
         I'm an AI, not {owner.name}. My answers come from this CV and may be inaccurate. Messages are
-        processed by third-party AI providers (via OpenRouter) that may log them, so please don't
-        share personal or sensitive information.
+        processed by a third-party AI provider that may log them, so please don't share personal or
+        sensitive information.
       </p>
 
       <div ref={logRef} className="twin-log" role="log" aria-live="polite" aria-label="Conversation">

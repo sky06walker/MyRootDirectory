@@ -36,10 +36,58 @@ export class MemoryStore implements TwinStore {
   }
 }
 
-export const fakeKv = (data: Record<string, string> = {}) => ({
-  data,
-  get: vi.fn(async (key: string) => data[key] ?? null),
-});
+/** In-memory KV: strings in `data`, binary values (with metadata) in `blobs`. */
+export const fakeKv = (data: Record<string, string> = {}) => {
+  const blobs = new Map<string, { value: ArrayBuffer; metadata: unknown }>();
+  return {
+    data,
+    blobs,
+    get: vi.fn(async (key: string) => data[key] ?? null),
+    put: vi.fn(async (key: string, value: string | ArrayBuffer, options?: { metadata?: unknown }) => {
+      if (typeof value === "string") data[key] = value;
+      else blobs.set(key, { value, metadata: options?.metadata ?? null });
+    }),
+    delete: vi.fn(async (key: string) => {
+      delete data[key];
+      blobs.delete(key);
+    }),
+    getWithMetadata: vi.fn(async (key: string) => {
+      const blob = blobs.get(key);
+      return blob ? { value: blob.value, metadata: blob.metadata } : { value: null, metadata: null };
+    }),
+  };
+};
+
+// ---- minimal image headers (the server only reads headers, never decodes pixels) ----
+
+const ascii = (text: string) => [...text].map((c) => c.charCodeAt(0));
+const le = (value: number, bytes: number) => Array.from({ length: bytes }, (_, i) => (value >> (8 * i)) & 0xff);
+const be32 = (value: number) => [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
+
+export const makePng = (width: number, height: number, padTo = 64): Uint8Array => {
+  const head = [137, 80, 78, 71, 13, 10, 26, 10, ...be32(13), ...ascii("IHDR"), ...be32(width), ...be32(height), 8, 6, 0, 0, 0];
+  return Uint8Array.from([...head, ...new Array(Math.max(0, padTo - head.length)).fill(0)]);
+};
+
+export const makeWebp = (kind: "VP8X" | "VP8L" | "VP8 ", width: number, height: number, padTo = 64): Uint8Array => {
+  let chunk: number[];
+  if (kind === "VP8X") chunk = [...ascii("VP8X"), ...le(10, 4), 0, 0, 0, 0, ...le(width - 1, 3), ...le(height - 1, 3)];
+  else if (kind === "VP8L") {
+    const bits = ((width - 1) & 0x3fff) | (((height - 1) & 0x3fff) << 14);
+    chunk = [...ascii("VP8L"), ...le(10, 4), 0x2f, ...le(bits >>> 0, 4), 0, 0, 0, 0, 0];
+  } else {
+    chunk = [...ascii("VP8 "), ...le(20, 4), 0, 0, 0, 0x9d, 0x01, 0x2a, ...le(width, 2), ...le(height, 2)];
+  }
+  const body = [...ascii("WEBP"), ...chunk];
+  const out = [...ascii("RIFF"), ...le(body.length, 4), ...body];
+  return Uint8Array.from([...out, ...new Array(Math.max(0, padTo - out.length)).fill(0)]);
+};
+
+export const toDataUrl = (bytes: Uint8Array, mime = "image/png"): string => {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte); // not spread: large arrays overflow the stack
+  return `data:${mime};base64,${btoa(binary)}`;
+};
 
 export const makeEnv = (overrides: Partial<Env> = {}, kv = fakeKv()): Env =>
   ({

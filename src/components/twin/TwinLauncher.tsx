@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { fetchTwinStatus, type TwinStatus } from '../../utils/twinApi';
+import { TwinAvatar } from './TwinAvatar';
 
 // The dialog (and everything it needs) is a separate chunk: it is requested on hover/focus
 // or click, never with the page, so the launcher adds almost nothing to the public bundle.
@@ -112,26 +113,12 @@ export const TwinLauncher: React.FC<{ owner: TwinOwner }> = ({ owner }) => {
         aria-controls="twin-dialog"
         title={resting ? 'Resting right now: you can still read my quick answers' : undefined}
       >
-        <picture>
-          <source
-            type="image/webp"
-            srcSet="/twin/avatar-64.webp 1x, /twin/avatar-128.webp 2x, /twin/avatar-192.webp 3x"
-          />
-          <img
-            src="/twin/avatar-128.png"
-            srcSet="/twin/avatar-64.png 1x, /twin/avatar-128.png 2x, /twin/avatar-192.png 3x"
-            width={64}
-            height={64}
-            alt=""
-            decoding="async"
-            fetchPriority="low"
-          />
-        </picture>
+        <TwinAvatar hash={status?.avatarHash} size={64} />
       </button>
 
       {requested && (
         <Suspense fallback={null}>
-          <TwinDialog open={open} onClose={handleClose} owner={owner} resting={resting} resetsAt={status?.resetsAt} />
+          <TwinDialog open={open} onClose={handleClose} owner={owner} resting={resting} resetsAt={status?.resetsAt} avatarHash={status?.avatarHash} />
         </Suspense>
       )}
     </>

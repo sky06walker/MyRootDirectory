@@ -3,6 +3,8 @@ export interface TwinStatus {
   available?: boolean;
   reason?: string;
   resetsAt?: string;
+  /** Hash of the custom avatar set in the admin page; null/absent = built-in picture. */
+  avatarHash?: string | null;
 }
 
 export interface TwinMessage {

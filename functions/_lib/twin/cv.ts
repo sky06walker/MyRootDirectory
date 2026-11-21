@@ -82,7 +82,7 @@ export function parseStoredCv(raw: string): CVData | null {
 // so an admin edit reaches answers within about 1-2 minutes (documented in the plan).
 const cache = new Map<string, { at: number; value: unknown }>();
 
-async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+export async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.value as T;
   const value = await load();

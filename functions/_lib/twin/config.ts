@@ -1,8 +1,15 @@
 import type { Env } from "../common";
 
+export const OPENROUTER_HOST = "openrouter.ai";
+export const DEFAULT_PROVIDER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
 export interface TwinConfig {
   apiKey: string;
+  /** Full chat-completions endpoint (https). */
+  providerUrl: string;
   models: string[];
+  /** Admin ticked "this may cost money": ids need not end in :free. */
+  allowPaid: boolean;
   hmacSecret: string;
   requireTurnstile: boolean;
   turnstileSecret: string;
@@ -10,9 +17,16 @@ export interface TwinConfig {
   limits: { ipPerMin: number; ipPerDay: number; globalDailyCap: number };
 }
 
-// Only ":free" model ids can ever be sent upstream, so the twin cannot spend money.
-const MODEL_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/i;
-const MAX_MODELS = 3;
+/** Everything in TwinConfig that never comes from the admin page (infrastructure and secrets). */
+export type InfraConfig = Pick<
+  TwinConfig,
+  "hmacSecret" | "requireTurnstile" | "turnstileSecret" | "dataCollectionDeny" | "limits"
+>;
+
+// Free-only default: unless the admin ticks "allow paid", only ":free" ids can ever be sent upstream.
+const FREE_MODEL_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*:free$/i;
+export const MODEL_CHARSET = /^[A-Za-z0-9][A-Za-z0-9._~:/+-]{0,99}$/;
+export const MAX_MODELS = 3;
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const intEnv = (value: string | undefined, fallback: number, min: number, max: number): number => {
@@ -20,13 +34,14 @@ const intEnv = (value: string | undefined, fallback: number, min: number, max: n
   return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
 };
 
+/** Environment-variable models (fallback path): strictly free OpenRouter ids. */
 export function parseModels(value: string | undefined): string[] | null {
   const models = (value ?? "")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
   if (models.length < 1 || models.length > MAX_MODELS) return null;
-  return models.every((m) => MODEL_PATTERN.test(m)) ? models : null;
+  return models.every((m) => FREE_MODEL_PATTERN.test(m)) ? models : null;
 }
 
 export const parseHosts = (value: string | undefined): string[] =>
@@ -43,36 +58,35 @@ export function isLocalRequest(request: Request): boolean {
   );
 }
 
-/** The custom domain only (so *.pages.dev and previews cannot bypass its WAF), plus local dev. */
+/** The configured host(s) only (so previews cannot bypass the WAF), plus local dev. */
 export function isAllowedHost(request: Request, env: Env): boolean {
   if (isLocalRequest(request)) return true;
   return parseHosts(env.TWIN_ALLOWED_HOSTS).includes(new URL(request.url).hostname.toLowerCase());
 }
 
-export type ConfigResult = { ok: true; config: TwinConfig } | { ok: false; reason: string };
-
-/** Validates everything the twin needs. Anything missing -> the twin stays off (fail closed). */
-export function readConfig(env: Env): ConfigResult {
-  const models = parseModels(env.TWIN_MODELS);
-  if (!models) return { ok: false, reason: "TWIN_MODELS must list 1-3 ids ending in :free" };
-  if (!env.OPENROUTER_API_KEY) return { ok: false, reason: "OPENROUTER_API_KEY is not set" };
+/** What is missing from the infrastructure side (D1, secrets, Turnstile). Empty = fine. */
+export function infraProblems(env: Env): string[] {
+  const problems: string[] = [];
+  if (!env.TWIN_DB) problems.push("TWIN_DB (D1 database binding) is not set up");
   if (!env.TWIN_HMAC_SECRET || env.TWIN_HMAC_SECRET.length < 32) {
-    return { ok: false, reason: "TWIN_HMAC_SECRET must be at least 32 characters" };
+    problems.push("TWIN_HMAC_SECRET secret must be at least 32 characters");
   }
-  if (!env.TWIN_DB) return { ok: false, reason: "TWIN_DB (D1) binding is missing" };
-
-  const requireTurnstile = env.TWIN_REQUIRE_TURNSTILE !== "false";
-  if (requireTurnstile && !env.TURNSTILE_SECRET_KEY) {
-    return { ok: false, reason: "TURNSTILE_SECRET_KEY is not set" };
+  if (env.TWIN_REQUIRE_TURNSTILE !== "false" && !env.TURNSTILE_SECRET_KEY) {
+    problems.push("TURNSTILE_SECRET_KEY secret is not set");
   }
+  return problems;
+}
 
+export type InfraResult = { ok: true; config: InfraConfig } | { ok: false; reason: string };
+
+export function readInfra(env: Env): InfraResult {
+  const problems = infraProblems(env);
+  if (problems.length > 0) return { ok: false, reason: problems.join("; ") };
   return {
     ok: true,
     config: {
-      apiKey: env.OPENROUTER_API_KEY,
-      models,
-      hmacSecret: env.TWIN_HMAC_SECRET,
-      requireTurnstile,
+      hmacSecret: env.TWIN_HMAC_SECRET as string,
+      requireTurnstile: env.TWIN_REQUIRE_TURNSTILE !== "false",
       turnstileSecret: env.TURNSTILE_SECRET_KEY ?? "",
       dataCollectionDeny: env.TWIN_DATA_COLLECTION_DENY === "true",
       limits: {
@@ -80,6 +94,30 @@ export function readConfig(env: Env): ConfigResult {
         ipPerDay: intEnv(env.TWIN_IP_PER_DAY, 10, 1, 1000),
         globalDailyCap: intEnv(env.TWIN_GLOBAL_DAILY_CAP, 45, 1, 100000),
       },
+    },
+  };
+}
+
+export type ConfigResult = { ok: true; config: TwinConfig } | { ok: false; reason: string };
+
+/**
+ * Environment-only configuration (used when nothing has been saved from the admin page).
+ * The env API key only ever goes to the built-in OpenRouter endpoint.
+ */
+export function readConfig(env: Env): ConfigResult {
+  const models = parseModels(env.TWIN_MODELS);
+  if (!models) return { ok: false, reason: "TWIN_MODELS must list 1-3 ids ending in :free" };
+  if (!env.OPENROUTER_API_KEY) return { ok: false, reason: "OPENROUTER_API_KEY is not set" };
+  const infra = readInfra(env);
+  if (!infra.ok) return infra;
+  return {
+    ok: true,
+    config: {
+      apiKey: env.OPENROUTER_API_KEY,
+      providerUrl: DEFAULT_PROVIDER_URL,
+      models,
+      allowPaid: false,
+      ...infra.config,
     },
   };
 }

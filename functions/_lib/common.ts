@@ -29,8 +29,10 @@ export interface Env {
   TWIN_IP_PER_DAY?: string;
   /** Local development only: replaces the OpenRouter URL (honoured on localhost without CF-Ray). */
   TWIN_UPSTREAM_URL?: string;
-  /** D1 database for rate-limit counters and the resting flag. */
+  /** D1 database for rate-limit counters, the resting flag and the admin audit log. */
   TWIN_DB?: D1Database;
+  /** Secret, 32+ characters. Encrypts the AI API key saved from the admin page (separate from TWIN_HMAC_SECRET on purpose). */
+  TWIN_CONFIG_ENC_KEY?: string;
 }
 
 export interface AdminIdentity {

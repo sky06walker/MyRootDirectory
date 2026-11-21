@@ -2,6 +2,7 @@ import React, { useEffect, useId, useState } from 'react';
 import { INITIAL_CV_DATA, type CVData, type Theme } from '../utils/types';
 import { fetchCVData, saveCVData } from '../utils/api';
 import { Header } from '../components/Header';
+import { TwinSettings } from '../components/admin/TwinSettings';
 
 interface AdminProps {
     theme?: Theme;
@@ -258,6 +259,9 @@ export const Admin: React.FC<AdminProps> = ({ theme }) => {
                     </div>
                 ))}
             </div>
+
+            {/* Saved separately from the CV (its own buttons): avatar, AI provider, model and key. */}
+            <TwinSettings />
         </div>
     );
 };

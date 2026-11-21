@@ -23,17 +23,38 @@ export type UpstreamResult =
 
 interface CallOptions {
   apiKey: string;
-  /** Already validated as ":free" ids. */
+  /** Already validated (":free" ids unless the admin allowed paid models). */
   models: string[];
   system: string;
   messages: ChatMessage[];
   dataCollectionDeny?: boolean;
+  /** Full chat-completions endpoint; defaults to OpenRouter. */
   url?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
 
-const MAX_RESPONSE_CHARS = 100_000;
+const MAX_RESPONSE_BYTES = 100_000;
+
+/** Reads at most `maxBytes` of the body (stops and cancels beyond it); null = too large. */
+async function readLimited(res: Response, maxBytes: number): Promise<string | null> {
+  if (!res.body) return null;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0;
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
 
 export function classifyError(status: number, message: string): UpstreamErrorKind {
   if (status === 402) return "payment";
@@ -55,34 +76,51 @@ export async function callOpenRouter(opts: CallOptions): Promise<UpstreamResult>
     max_tokens: 400,
     stream: false,
   };
-  // `models` = ordered fallback list inside ONE upstream request (all ids are :free).
-  if (opts.models.length > 1) body.models = opts.models;
-  else body.model = opts.models[0];
-  if (opts.dataCollectionDeny) body.provider = { data_collection: "deny" };
+  const targetUrl = opts.url ?? OPENROUTER_URL;
+  let isOpenRouter = false;
+  try {
+    isOpenRouter = new URL(targetUrl).hostname === "openrouter.ai";
+  } catch {
+    return { ok: false, kind: "unavailable" };
+  }
+  if (isOpenRouter) {
+    // OpenRouter extensions: `models` = ordered fallback list inside ONE upstream request, and an
+    // optional provider-privacy preference. Other providers get the plain OpenAI-compatible body.
+    if (opts.models.length > 1) body.models = opts.models;
+    else body.model = opts.models[0];
+    if (opts.dataCollectionDeny) body.provider = { data_collection: "deny" };
+  } else {
+    body.model = opts.models[0];
+  }
 
   let res: Response;
   try {
-    res = await doFetch(opts.url ?? OPENROUTER_URL, {
+    res = await doFetch(targetUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${opts.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      // The provider URL is admin-set and receives the API key: never follow a redirect to another
+      // host. "manual" returns the 3xx response itself, which is rejected just below. Do not use
+      // "error": the Workers runtime does not support it, and every provider call then fails.
+      redirect: "manual",
       signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000),
     });
   } catch (e) {
     const name = e instanceof Error ? e.name : "";
     return { ok: false, kind: name === "TimeoutError" || name === "AbortError" ? "timeout" : "unavailable" };
   }
+  if (res.status >= 300 && res.status < 400) return { ok: false, kind: "unavailable" };
 
-  let text: string;
+  let text: string | null;
   try {
-    text = await res.text();
+    text = await readLimited(res, MAX_RESPONSE_BYTES);
   } catch {
     return { ok: false, kind: "unavailable" };
   }
-  if (text.length > MAX_RESPONSE_CHARS) return { ok: false, kind: "bad_response" };
+  if (text === null) return { ok: false, kind: "bad_response" };
 
   let data: {
     error?: { message?: unknown; code?: unknown };

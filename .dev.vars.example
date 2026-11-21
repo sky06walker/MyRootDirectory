@@ -7,13 +7,19 @@ ALLOW_INSECURE_LOCAL_AUTH=true
 
 # --- Digital twin (docs/digital-twin-ops.md), pointed at the local mock ---
 # Terminal 1: node scripts/mock-openrouter.mjs
+# The AI provider URL, model and API key are saved from the admin page (/admin); these three are only
+# a fallback until you save there once, so a local run can work without touching the admin page.
 TWIN_ENABLED=true
 OPENROUTER_API_KEY=local-mock-key
 TWIN_MODELS=mock/mock-model:free
-# 32+ random characters, e.g. node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
+
+# Each of these: 32+ random characters, e.g. node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
 TWIN_HMAC_SECRET=replace-me-with-32-or-more-random-characters
+# Encrypts the AI key saved from the admin page. Different value from TWIN_HMAC_SECRET.
+TWIN_CONFIG_ENC_KEY=replace-me-with-another-32-or-more-random-characters
 TWIN_REQUIRE_TURNSTILE=false
-# Honoured only for localhost requests without CF-Ray; ignored in production.
+# Honoured only for localhost requests without CF-Ray; ignored in production. Replaces the provider
+# URL saved in the admin page (which must be a public https host), for chat and "Test saved settings".
 TWIN_UPSTREAM_URL=http://127.0.0.1:8790/v1/chat/completions
 
 # Optional: exercise the real Access JWT check locally instead of the bypass

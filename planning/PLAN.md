@@ -429,3 +429,22 @@ Built by the coding agent (Sonnet) after the owner said "ok you may start work o
 - `models[]` fallback semantics with free models, a `$0` key limit, `data_collection: "deny"` leaving no free endpoint, WAF rule parameters, Turnstile (script load and the interaction-only widget) and the Pages CPU limit are **still unverified**: nothing here talked to the real OpenRouter, Turnstile or Cloudflare. Do the Phase 0 spike before enabling.
 
 **Next, in order:** (1) owner: Phase 0 spike and setup (`docs/digital-twin-ops.md`), CV typo fixes, FAQ content, approve quick answers, decide on $10 credits; (2) coding agent: enable on a preview with real keys and run the 10-question quality check; ship CSP/security headers as their own change; (3) then Phase 3/4 extras (evaluation set, admin toggle, streaming only if latency needs it, thumbs up/down).
+
+---
+
+## Revision 3 (2026-11-21): settings managed from the admin page
+
+The owner asked for the avatar, AI model, AI provider URL and AI API key to be changeable from `/admin` instead of hard-coded. Built after an independent Opus security review (all its P0 findings adopted). This supersedes D9 ("avatar by redeploy only", "model list in env") and the "env-only provider" assumption in sections 3 and 6.
+
+**Design (as built)**
+- **One KV record `twin_config`** holds the non-secret settings and the encrypted API key together (a new URL can never be read next to an old key). Encryption: AES-GCM, key derived (HKDF) from the dedicated secret `TWIN_CONFIG_ENC_KEY` (not `TWIN_HMAC_SECRET`, so rotating sessions never destroys the key), ciphertext bound to the provider origin as AAD. The key is write-only and is dropped when the provider origin changes.
+- **One source of truth, fail closed:** kill switch > saved record > environment fallback (only when no record exists). A broken or undecryptable record is OFF, never a quiet fallback. The environment API key can only be used on the built-in OpenRouter endpoint.
+- **Provider URL** (admin-set, receives the key): https, public host name, no IP/port/query/credentials/single-label/localhost/.local, never the site itself; calls use `redirect: "manual"` and refuse 3xx; response read capped at ~100 KB; test endpoint throttled and returns only ok/kind.
+- **Cost guard preserved:** ids must end in `:free` unless "allow paid" is ticked; any non-OpenRouter provider needs "allow paid" (the `:free` suffix means nothing elsewhere), with a visible warning.
+- **Avatar:** PNG/WebP only, sniffed from the file's own bytes, 100 KB, 16-512 px, content-addressed blob + pointer, served with `nosniff` and `default-src 'none'; sandbox`; independent of the settings record.
+- **Audit trail:** D1 `twin_audit` (+ log): actor, action, field names, request id, CF-Ray; never values. Stale saves rejected (`updatedAt` token).
+- **UI:** "Digital twin (AI chat)" card in `/admin` (on/off, URL, up to 3 models, allow-paid, write-only key, test, avatar upload with client-side square crop, reset). The Admin page is now lazy-loaded, so the public bundle shrank (87.00 KB gzip, below its pre-twin size).
+
+**Verification:** 129 tests pass (settings validation, encryption incl. AAD/secret/tamper, precedence and fail-closed rules, admin routes, audit contents, avatar rejection cases, public avatar headers, middleware 401/403, provider hardening). Run end to end in a real browser with the local mock: save settings (key encrypted, never in the page), test connection, chat using the saved settings (`config_source: kv`), avatar upload to the public launcher and dialog, reset, stale-save 409. **That run caught a real bug:** `redirect: "error"` is unsupported by the Workers runtime and made every provider call fail silently; fixed (`"manual"` + 3xx rejection) with a regression test.
+
+**Still owner actions / unverified:** set the `TWIN_CONFIG_ENC_KEY`, `TWIN_HMAC_SECRET`, `TURNSTILE_SECRET_KEY` secrets, create the D1 database, Turnstile widget and WAF rule (docs/digital-twin-ops.md); none of this has talked to the real OpenRouter, Turnstile or Cloudflare. Known limits: anyone who can deploy code or read Cloudflare secrets can still decrypt the key; previews share the production KV namespace (`preview_id` = `id`), so keep `TWIN_CONFIG_ENC_KEY` out of Preview and create a separate preview namespace when possible; a rollback to an older deployment ignores the saved admin settings; an audit-trail viewer is not built yet.

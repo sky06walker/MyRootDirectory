@@ -1,6 +1,8 @@
 import { type Env, isSameOriginJson, json } from "../common";
-import { isAllowedHost, isLocalRequest, readConfig } from "./config";
-import { isKilled, loadCv, loadFaq, toTwinCv } from "./cv";
+import { isAllowedHost, isLocalRequest } from "./config";
+import { loadAvatarHash } from "./avatar";
+import { loadCv, loadFaq, toTwinCv } from "./cv";
+import { loadTwinConfig } from "./settings";
 import {
   D1TwinStore,
   type TwinStore,
@@ -13,7 +15,7 @@ import {
   verifySession,
   verifyTurnstile,
 } from "./guard";
-import { OPENROUTER_URL, callOpenRouter } from "./openrouter";
+import { callOpenRouter } from "./openrouter";
 import { PROMPT_VERSION, buildSystemPrompt, filterAnswer } from "./prompt";
 import { LIMITS, validateChatRequest } from "./validate";
 
@@ -67,15 +69,15 @@ export async function handleChat(
   };
 
   if (!isAllowedHost(request, env)) return done("forbidden_host", fail(403, "forbidden"));
-  if (env.TWIN_ENABLED !== "true" || (await isKilled(env.CV_DATA))) {
-    return done("disabled", fail(503, "disabled"));
-  }
-  const configured = readConfig(env);
-  if (!configured.ok) {
-    console.error("Digital twin misconfigured:", configured.reason);
+  // One source of truth (kill switch > saved admin settings > environment); see settings.ts.
+  const loaded = await loadTwinConfig(env);
+  if (loaded.state === "disabled") return done("disabled", fail(503, "disabled"));
+  if (loaded.state === "misconfigured") {
+    console.error("Digital twin misconfigured:", loaded.reason);
     return done("misconfigured", fail(503, "unavailable"));
   }
-  const { config } = configured;
+  const { config } = loaded;
+  meta.config_source = loaded.source;
 
   if (!isSameOriginJson(request)) return done("forbidden_origin", fail(403, "forbidden"));
 
@@ -146,7 +148,7 @@ export async function handleChat(
       system,
       messages,
       dataCollectionDeny: config.dataCollectionDeny,
-      url: isLocalRequest(request) && env.TWIN_UPSTREAM_URL ? env.TWIN_UPSTREAM_URL : OPENROUTER_URL,
+      url: isLocalRequest(request) && env.TWIN_UPSTREAM_URL ? env.TWIN_UPSTREAM_URL : config.providerUrl,
       fetchImpl: deps.fetchImpl,
     });
 
@@ -202,26 +204,33 @@ export async function handleStatus(request: Request, env: Env, deps: HandlerDeps
   const clock = deps.now ?? Date.now;
   const headers = { "Cache-Control": "public, max-age=30" };
   if (!isAllowedHost(request, env)) return json({ enabled: false }, 200, headers);
-  if (env.TWIN_ENABLED !== "true" || (await isKilled(env.CV_DATA))) {
+  const loaded = await loadTwinConfig(env);
+  if (loaded.state === "misconfigured") {
+    console.error("Digital twin misconfigured:", loaded.reason);
     return json({ enabled: false }, 200, headers);
   }
-  const configured = readConfig(env);
-  if (!configured.ok) {
-    console.error("Digital twin misconfigured:", configured.reason);
-    return json({ enabled: false }, 200, headers);
-  }
+  if (loaded.state === "disabled") return json({ enabled: false }, 200, headers);
+
+  // Custom avatar (set in the admin page), if any; the launcher falls back to the built-in picture.
+  const avatarHash = await loadAvatarHash(env).catch(() => null);
   try {
     const store = deps.store ?? new D1TwinStore(env.TWIN_DB as D1Database);
     const restingUntil = await getRestingUntil(store, Math.floor(clock() / 1000));
     return json(
       restingUntil
-        ? { enabled: true, available: false, reason: "resting", resetsAt: new Date(restingUntil * 1000).toISOString() }
-        : { enabled: true, available: true },
+        ? {
+            enabled: true,
+            available: false,
+            reason: "resting",
+            resetsAt: new Date(restingUntil * 1000).toISOString(),
+            avatarHash,
+          }
+        : { enabled: true, available: true, avatarHash },
       200,
       headers,
     );
   } catch (e) {
     console.error("Digital twin status error:", e instanceof Error ? e.message : e);
-    return json({ enabled: true, available: false, reason: "resting" }, 200, headers);
+    return json({ enabled: true, available: false, reason: "resting", avatarHash }, 200, headers);
   }
 }

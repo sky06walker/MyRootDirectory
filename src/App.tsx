@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Home } from './pages/Home';
-import { Admin } from './pages/Admin';
 import { RequireAuth } from './components/RequireAuth';
 import type { Theme } from './utils/types';
+
+// The admin console is only for the owner: keep it out of the public page's JavaScript.
+const Admin = lazy(() => import('./pages/Admin').then((m) => ({ default: m.Admin })));
 
 const isTheme = (value: unknown): value is Theme =>
     value === 'modern' || value === 'custom';
@@ -41,7 +43,9 @@ function AppContent() {
             <Route path="/login" element={<Navigate to="/admin" replace />} />
             <Route path="/admin" element={
                 <RequireAuth>
-                    <Admin theme={theme} />
+                    <Suspense fallback={<div className="container">Loading...</div>}>
+                        <Admin theme={theme} />
+                    </Suspense>
                 </RequireAuth>
             } />
         </Routes>

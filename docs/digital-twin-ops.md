@@ -1,40 +1,77 @@
 # Digital twin: setup and operations
 
 A floating cartoon avatar on the public CV (`/`). Clicking it opens a dialog where visitors can use
-pre-written quick answers (free, instant) or ask free-text questions answered by an **OpenRouter free
-(`:free`) model** that only knows your live CV. Design and decisions: `planning/PLAN.md`.
+pre-written quick answers (free, instant) or ask free-text questions answered by an AI model that only
+knows your live CV. Design and decisions: `planning/PLAN.md`.
 
-**Safe by default:** with `TWIN_ENABLED` unset the status endpoint says `disabled` and the avatar is not
-rendered, so deploying the code changes nothing visible. The twin also fails closed (stays off) if any
-required setting below is missing.
+**You manage the twin from the admin page** (`/admin`, "Digital twin (AI chat)" card): on/off, avatar
+picture, AI provider URL, AI model(s) and the AI API key. Only the infrastructure (database, Turnstile,
+three secrets, allowed host) is set up once in Cloudflare.
+
+**Safe by default:** nothing shows to visitors until you switch it on and everything it needs exists
+(otherwise the status endpoint says `disabled` and the avatar is not rendered). If anything is missing or
+broken the twin fails closed (stays off); it never quietly falls back to other settings.
 
 ## How a question flows
 
-`browser -> POST /api/chat -> checks (host, origin, size, Turnstile/session, per-IP and global caps, "resting" flag) -> CV from KV + your FAQ -> prompt -> OpenRouter (:free models only) -> output filter -> answer`
+`browser -> POST /api/chat -> checks (host, origin, size, Turnstile/session, per-IP and global caps, "resting" flag) -> CV from KV + your FAQ -> prompt -> AI provider (your saved URL, model and key) -> output filter -> answer`
 
 - Quick answers (`src/components/twin/starters.ts`) never touch the server.
 - Counters live in D1 (consistent across servers). Tables are created automatically on first use.
 - No conversation text is stored or logged; logs hold outcome, lengths, model and a daily-rotating
   pseudonymous client hash only.
 
-## Settings
+## What the admin card controls (and how it is protected)
+
+| Field | Rules |
+|---|---|
+| Show to visitors | Master switch for the twin. |
+| AI provider URL | The **full chat-completions endpoint**, `https` only, a public host name (no IP addresses, no `localhost`/`.local`, no port, no query), and never this site itself. Default: `https://openrouter.ai/api/v1/chat/completions`. |
+| AI model(s) | 1 to 3 ids, tried in order (only the first is used outside OpenRouter). Free-only by default: ids must end in `:free`. |
+| Allow paid models | Tick to use paid models **or any provider other than OpenRouter**. The free-only protection then no longer applies and visitor questions may cost money; set a spending limit at the provider and keep `TWIN_GLOBAL_DAILY_CAP` low. |
+| AI API key | Write-only: shown only as "saved, ends in ABCD", never returned. Replace it by typing a new one, or tick "Remove". Changing the provider host removes the saved key (you must enter the key for the new provider). |
+| Avatar | Any picture; the browser crops it to a square and shrinks it to 192 px (PNG/WebP, 100 KB at most). "Use the built-in avatar" goes back to the default. |
+
+Behind the scenes:
+- The settings and the encrypted key are **one** record in KV (`twin_config`), so a new URL can never be
+  paired with an old key. The key is encrypted (AES-GCM) with a key derived from the `TWIN_CONFIG_ENC_KEY`
+  secret and bound to the provider's origin, so a copied or edited record cannot be decrypted for another host.
+  Anyone who can only read KV (dashboard viewers, exports) cannot read the key; anyone who can deploy code
+  or read the Cloudflare secrets still can, so protect your Cloudflare account and use a provider-side
+  spending limit.
+- One source of truth: kill switch (`twin_disabled`) > saved admin settings > environment variables
+  (`TWIN_ENABLED`, `TWIN_MODELS`, `OPENROUTER_API_KEY`, used only until you save settings once). If a saved
+  record exists but is broken or cannot be decrypted, the twin is **off** (the admin card tells you why).
+- Saves are checked against what you last saw: if the settings were changed somewhere else you get a
+  "reload and try again" message instead of overwriting. Every change is written to an audit trail (D1 table
+  `twin_audit` and the logs) with the field **names** and who did it, never values or the key.
+- The provider is never allowed to redirect the request elsewhere, and a response bigger than about 100 KB
+  is cut off. "Test saved settings" sends one tiny request (at most once per 10 seconds) and reports only
+  success or a failure type, never what the provider said.
+- The avatar is stored in KV as an image named by its content hash and served from `/api/twin/avatar?h=...`
+  with `nosniff` and a sandboxing CSP. Only PNG and WebP are accepted (no SVG, no JPEG metadata) and the
+  file is checked by its own bytes and size.
+
+## Settings in Cloudflare (infrastructure only)
 
 | Name | Kind | Purpose |
 |---|---|---|
-| `TWIN_ENABLED` | var | `true` turns the twin on. Anything else keeps it off. |
-| `TWIN_MODELS` | var | 1-3 OpenRouter ids, each ending in `:free`, comma separated, first = preferred. |
-| `TWIN_ALLOWED_HOSTS` | var | Your custom domain(s), comma separated. Other hosts (`*.pages.dev`, previews) get 403. |
-| `OPENROUTER_API_KEY` | **secret** | Server-side only. |
-| `TWIN_HMAC_SECRET` | **secret** | 32+ random characters (session tokens, client hashing). |
+| `TWIN_CONFIG_ENC_KEY` | **secret** | 32+ random characters. Encrypts the AI key saved from the admin page. Do **not** reuse `TWIN_HMAC_SECRET`; do **not** set it for Preview deployments. If you change it, the saved key can no longer be read and you enter it again. |
+| `TWIN_HMAC_SECRET` | **secret** | 32+ random characters (visitor sessions, client hashing). Changing it only ends current sessions. |
 | `TURNSTILE_SECRET_KEY` | **secret** | Cloudflare Turnstile secret. |
-| `VITE_TURNSTILE_SITE_KEY` | build-time var | Turnstile site key (public by design). Set it in the Pages **build** environment variables. |
-| `TWIN_DB` | D1 binding | Counters and the resting flag. |
-| `TWIN_GLOBAL_DAILY_CAP` | var, default 45 | Requests per UTC day for the whole site. Keep below your OpenRouter daily limit (about 50 free; about 1,000 with $10 credits: verify). |
+| `VITE_TURNSTILE_SITE_KEY` | build-time var | Turnstile site key (public by design). Set it in the Pages **build** environment variables or under `[vars]`. |
+| `TWIN_DB` | D1 binding | Counters, the resting flag and the audit trail. |
+| `TWIN_ALLOWED_HOSTS` | var | The host(s) that may call the chat, e.g. `myrootdirectory.pages.dev`. Other hosts get 403. |
+| `TWIN_GLOBAL_DAILY_CAP` | var, default 45 | Requests per UTC day for the whole site. Keep below your provider's daily limit (OpenRouter: about 50 free; about 1,000 with $10 credits: verify). |
 | `TWIN_IP_PER_MIN` / `TWIN_IP_PER_DAY` | var, defaults 3 / 10 | Per visitor. |
 | `TWIN_DATA_COLLECTION_DENY` | var | `true` asks OpenRouter to avoid providers that collect data (may leave no free model: test it). |
 | `TWIN_REQUIRE_TURNSTILE` | var | `false` only for local development. |
+| `TWIN_ENABLED`, `TWIN_MODELS`, `OPENROUTER_API_KEY` | optional | Only a fallback until you save settings in the admin page for the first time; you do not need them. |
 
-Fast kill switch (no redeploy, effective within about 1-2 minutes):
+Never reuse a variable name that already exists in the Pages dashboard when you add one to `wrangler.toml`
+(see `docs/admin-access-setup.md`): the deployment fails with "Binding name ... already in use".
+
+Fast kill switch (no redeploy, effective within about 1-2 minutes), also available if the admin page is unreachable:
 
 ```bash
 npx wrangler kv key put twin_disabled 1 --binding CV_DATA --remote      # off
@@ -43,8 +80,8 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 
 ## One-time owner setup (nothing below can be done from code)
 
-1. **OpenRouter** (openrouter.ai): create an account and a **dedicated key**. In Settings -> Privacy turn **off** prompt logging/training options for free models. Pick 2-3 `:free` models (>= 16k context, good instruction following), then try `TWIN_DATA_COLLECTION_DENY=true` and check that answers still work. Optional but recommended: buy $10 of credits once, which raises the free-model cap (verify the current limits and that a minimal/$0 key credit limit still allows `:free` calls).
-2. **Turnstile** (Cloudflare dashboard): create a widget for your custom domain and `myrootdirectory.pages.dev`.
+1. **AI provider account:** for the default, OpenRouter (openrouter.ai): create an account and a **dedicated key**; in Settings -> Privacy turn **off** prompt logging/training options for free models. Optional but recommended: buy $10 of credits once, which raises the free-model cap (verify the current limits). You will paste this key into the admin page, not into Cloudflare.
+2. **Turnstile** (Cloudflare dashboard): create a widget for `myrootdirectory.pages.dev` (and your custom domain, if any).
 3. **D1:** `npx wrangler d1 create cv-twin`, then add to `wrangler.toml` (do this only once you have the real id: a placeholder would break deployments):
 
    ```toml
@@ -53,43 +90,47 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
    database_name = "cv-twin"
    database_id = "<id from the command>"
    ```
-4. **Secrets:**
+4. **Secrets** (random values: `node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"`; make a different one for each):
 
    ```bash
-   npx wrangler pages secret put OPENROUTER_API_KEY --project-name myrootdirectory
-   npx wrangler pages secret put TWIN_HMAC_SECRET --project-name myrootdirectory     # node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"
+   npx wrangler pages secret put TWIN_CONFIG_ENC_KEY --project-name myrootdirectory
+   npx wrangler pages secret put TWIN_HMAC_SECRET --project-name myrootdirectory
    npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name myrootdirectory
    ```
-5. **Plain settings** (`TWIN_MODELS`, `TWIN_ALLOWED_HOSTS`, caps) go in `wrangler.toml` under `[vars]` or in the Pages dashboard; use one place consistently. Leave `TWIN_ENABLED` unset for now.
+5. **Plain settings** in `wrangler.toml` under `[vars]`: `TWIN_ALLOWED_HOSTS`, `VITE_TURNSTILE_SITE_KEY` and, if you want, the caps. Push to deploy.
 6. **Your content:** approve or edit the quick answers in `src/components/twin/starters.ts` (they are drafts), fix the typos in the CV text (the twin repeats what the CV says), and optionally give the twin extra facts (stories, working style, roles you want, notice period if you want it answered):
 
    ```bash
    npx wrangler kv key put twin_faq --path faq.txt --binding CV_DATA --remote   # up to 8,000 characters, plain text
    ```
 7. Add the **Cloudflare WAF rate-limit rule** for `POST /api/chat` (about 10 requests per 10 seconds per IP) and enable Workers Logs.
-8. **Deploy with `TWIN_ENABLED` still off**, check `/api/chat/status` returns `{"enabled":false}`, then set `TWIN_ENABLED=true` (a new deployment, because plain variables are read at deploy time) and ask a few questions. Never test with a pre-Access deployment.
+8. Open `/admin` -> "Digital twin (AI chat)": paste the key, check the provider URL and model, choose an avatar if you like, press **Save**, then **Test saved settings**, then tick "Show the digital twin to visitors" and Save again. The card shows what is still missing.
 
 ## Day-to-day
 
 - **"Resting" in the dialog:** the free quota (or the global cap) is used up or the provider paused us. It clears at 00:00 UTC (08:00 Malaysia time) for the daily quota, 60 s for provider throttling, 15 min for a payment problem. Quick answers and email keep working. If it happens repeatedly: lower `TWIN_IP_PER_DAY`, switch Turnstile to an interactive challenge, or buy credits.
-- **Change a model:** edit `TWIN_MODELS`, redeploy, ask 10 real questions (including things not in the CV) and check it says "I don't know" instead of guessing. Free models appear and disappear without notice.
-- **Key leak:** revoke the key in OpenRouter, create a new dedicated key, `wrangler pages secret put OPENROUTER_API_KEY`, redeploy. Same for `TURNSTILE_SECRET_KEY`. Changing `TWIN_HMAC_SECRET` only ends current visitor sessions.
-- **Bad answer reported:** switch it off with the kill switch if serious, add the missing fact to the FAQ or fix the CV, then re-enable.
-- **Rollback:** use the kill switch, then roll forward. Never roll back to a deployment from before the Cloudflare Access change.
+- **Change model, provider or key:** do it in the admin card, press Save, then **Test saved settings**, then ask a few real questions (including things not in the CV) and check it says "I don't know" instead of guessing. Free models appear and disappear without notice.
+- **Key leak:** revoke the key at the provider, create a new one and paste it in the admin card (or tick "Remove" and switch the twin off). Rotate `TWIN_CONFIG_ENC_KEY` too if you suspect Cloudflare access was exposed (then re-enter the key). Same for `TURNSTILE_SECRET_KEY`.
+- **Who changed what:** `SELECT * FROM twin_audit ORDER BY id DESC LIMIT 20;` in the D1 console (field names and actor only).
+- **Bad answer reported:** switch it off (admin card or the kill switch), add the missing fact to the FAQ or fix the CV, then re-enable.
+- **Preview deployments** share the production KV namespace in this repo (`preview_id` = `id`), so do not set `TWIN_CONFIG_ENC_KEY` for Preview, and create a separate preview KV namespace when you can.
+- **Rollback:** use the kill switch, then roll forward. Never roll back to a deployment from before the Cloudflare Access change; an older deployment also ignores the saved admin settings.
 
 ## Local development
 
 ```bash
 cp .dev.vars.example .dev.vars          # git-ignored
-node scripts/mock-openrouter.mjs        # terminal 1: fake OpenRouter on :8790, no quota used
+node scripts/mock-openrouter.mjs        # terminal 1: fake provider on :8790, no quota used
 npm run build && npx wrangler pages dev dist --d1 TWIN_DB   # terminal 2
 ```
 
-In the mock, keywords in the question trigger behaviours: `QUOTA` (daily limit -> resting), `THROTTLE`,
-`PAYMENT`, `BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup). `GET http://127.0.0.1:8790/last`
+On localhost the provider URL you save is replaced by `TWIN_UPSTREAM_URL` (the mock) for chat and for
+"Test saved settings"; this override is ignored for any request that came through Cloudflare. In the mock,
+keywords in the question trigger behaviours: `QUOTA` (daily limit -> resting), `THROTTLE`, `PAYMENT`,
+`BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup). `GET http://127.0.0.1:8790/last`
 shows the last request, including the real system prompt. Tests: `npm test` (no network).
 
 ## Not built yet (deliberately deferred, see planning/PLAN.md "Revision 2")
 
-Streaming replies, signed chat history, canary token, admin screen for the twin, per-model statistics,
-load tests, Playwright suite, CSP/security headers (REPORT S-9; ship as its own change), thumbs up/down.
+Streaming replies, signed chat history, canary token, per-model statistics, load tests, Playwright suite,
+CSP/security headers (REPORT S-9; ship as its own change), thumbs up/down, a viewer for the audit trail in the admin page.
