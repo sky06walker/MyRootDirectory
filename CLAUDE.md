@@ -12,7 +12,7 @@ A personal CV/resume site: a React 19 + TypeScript + Vite SPA served by **Cloudf
 npm run dev       # Vite dev server only (HMR). /api/* does NOT exist here.
 npm run build     # tsc -b && vite build  -> dist/
 npm run lint      # eslint . (flat config, ts/tsx only, ignores dist)
-npm test          # vitest run: tests/**/*.test.ts (functions/twin logic, plain Node, no network)
+npm test          # vitest run: tests/**/*.test.ts (twin backend + Access sign-in check, plain Node, no network)
 npm run typecheck:functions   # tsc -p tsconfig.functions.json (also part of `npm run build`)
 npm run preview   # vite preview of dist (also without /api/*)
 ```
@@ -24,7 +24,7 @@ cp .dev.vars.example .dev.vars        # git-ignored; sets ALLOW_INSECURE_LOCAL_A
 npm run build && npx wrangler pages dev dist
 ```
 
-Run one test file with `npx vitest run tests/twin/handler.test.ts` (or `-t "name"`). Only the digital twin backend has tests so far; verify other changes with `npm run build` (type-checks the app and `functions/`) and `npm run lint`. To try the twin locally see `docs/digital-twin-ops.md` (mock OpenRouter plus `wrangler pages dev dist --d1 TWIN_DB`).
+Run one test file with `npx vitest run tests/twin/handler.test.ts` (or `-t "name"`). Only the digital twin backend and the Access sign-in check have tests (145 tests; no UI/e2e tests, no CI yet); verify other changes with `npm run build` (type-checks the app and `functions/`) and `npm run lint`. To try the twin locally see `docs/digital-twin-ops.md` (mock OpenRouter plus `wrangler pages dev dist --d1 TWIN_DB`).
 
 ## Architecture
 
@@ -50,4 +50,6 @@ Other rules: the dialog and avatar are deliberately lively (gradient header, bub
 - The Python scripts at the repo root and `assets/extract_docx.py` (`dump_docx*.py`, `extract_*.py`, `analyze_layout.py`, `inspect_docx_styles.py`) are one-off helpers used to pull content out of the original `.docx` CV (they need `python-docx`). `cv_content_dump.txt` is their output. They are not part of the app or build.
 - CV text fields are rendered as plain text (`white-space: pre-line`), never as HTML; there is no sanitiser dependency, so do not introduce `dangerouslySetInnerHTML` without adding one.
 - `REPORT.md` holds the latest code review: finding status, remaining security findings, dependency advisories and recommended follow-ups.
-- The README is the unmodified Vite template and carries no project-specific information.
+- `README.md` is the entry point (what the project is, quick start, where things live, deployment); keep it short and keep this file as the detailed source.
+- Deployment facts: Cloudflare Pages project `myrootdirectory` (https://myrootdirectory.pages.dev), GitHub repo `sky06walker/MyRootDirectory`, Pages builds and deploys on every push to `main`. A failed deployment never replaces the live one. Public settings and bindings come from `wrangler.toml`; secrets only from the Pages dashboard.
+- Accounts and access: Cloudflare Zero Trust team `c-weihon` (sign-in by one-time code to the owner's email). `git push` credentials come from Git Credential Manager; the repo-local setting `credential.https://github.com.username` selects the GitHub account.

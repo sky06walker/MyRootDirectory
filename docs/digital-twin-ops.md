@@ -12,6 +12,12 @@ three secrets, allowed host) is set up once in Cloudflare.
 (otherwise the status endpoint says `disabled` and the avatar is not rendered). If anything is missing or
 broken the twin fails closed (stays off); it never quietly falls back to other settings.
 
+**Status for this project (2026-11-23):** the D1 database `cv-twin` is bound as `TWIN_DB`, the allowed host
+(`myrootdirectory.pages.dev`) and the Turnstile site key are in `wrangler.toml`, the three secrets were added
+by the owner, and `/api/chat/status` reports the twin enabled. Still to do by the owner: "Test saved settings"
+with the real key, second model `openrouter/free`, real test questions, approve the quick answers, fix CV
+typos, add the FAQ, decide on credits (see `planning/PLAN.md`, "Revision 4").
+
 ## How a question flows
 
 `browser -> POST /api/chat -> checks (host, origin, size, Turnstile/session, per-IP and global caps, "resting" flag) -> CV from KV + your FAQ -> prompt -> AI provider (your saved URL, model and key) -> output filter -> answer`
@@ -135,7 +141,15 @@ keywords in the question trigger behaviours: `QUOTA` (daily limit -> resting), `
 `BREAK` (500), `SLOW` (5 s), `LEAK` (answer that echoes the prompt markup), `LINK` (answer with a wrong LinkedIn and a phishing link: the link guard fixes or removes them). `GET http://127.0.0.1:8790/last`
 shows the last request, including the real system prompt. Tests: `npm test` (no network).
 
-## Not built yet (deliberately deferred, see planning/PLAN.md "Revision 2")
+## Customising the look and the wording
 
-Streaming replies, signed chat history, canary token, per-model statistics, load tests, Playwright suite,
-CSP/security headers (REPORT S-9; ship as its own change), thumbs up/down, a viewer for the audit trail in the admin page.
+- **Colours:** warm accents (`--twin-accent`, `--twin-accent-2`, `--twin-peach`, `--twin-pink`, `--twin-ink`) are defined on `.twin-launcher`, `.twin-bubble` and `.twin-dialog` in `src/styles/index.css` (the "Digital twin" block at the end); surfaces, borders and text follow the theme tokens, so light, dark and the classic theme all work. Keep white text on the accent at 4.5:1 contrast or better.
+- **Motion:** the avatar floats, pulses an invite ring, twinkles, waves every few seconds and jumps on hover; in the dialog it tilts while thinking and hops when an answer arrives. It is one picture moved with CSS, so it cannot blink or move its hand. **Every animation must stay inside the single `@media (prefers-reduced-motion: no-preference)` block** (keyframes excepted) so visitors who ask for less motion get none. Real expressions (blink, wave, talk) need extra frames in the same style, supplied by the owner.
+- **Wording:** title, subtitle, welcome bubble, errors, placeholder and footer text are in `src/components/twin/TwinDialog.tsx`; the greeting bubble and the avatar's label are in `TwinLauncher.tsx`; the quick answers and their emoji are in `starters.ts`; how the owner introduces themselves ("I'm Wei Hon.") is `shortName` in `src/pages/Home.tsx`. The privacy/accuracy notice is deliberately always visible.
+- **Avatar picture:** upload it from the admin card; the built-in files are `public/twin/avatar-*.webp|png` (source in `assets/twin/`).
+
+## Not built yet (deliberately deferred, see planning/PLAN.md "Revision 2" and "Revision 4")
+
+Streaming replies, signed chat history, canary token, per-model statistics, load tests, UI/e2e tests (Playwright),
+CI, CSP/security headers (REPORT S-9; ship as its own change), thumbs up/down, avatar expression frames, and a
+viewer for the audit trail in the admin page.

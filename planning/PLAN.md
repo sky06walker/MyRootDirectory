@@ -1,6 +1,6 @@
 # Digital Twin (AI chat avatar) - Implementation Plan
 
-**Status:** Approved - owner accepted all recommended defaults (D1-D10) on 2026-11-20; Phase 0 (owner dashboard actions) not started, no code written yet  **Date:** 2026-11-20  **Author:** planning agent (Opus), reviewed by the coding agent
+**Status (updated 2026-11-23):** Built, committed and deployed on `main`. Owner accepted all recommended defaults (D1-D10) on 2026-11-20; D1 database, Turnstile site key and allowed host are in `wrangler.toml`; the status endpoint reported the twin enabled on 2026-11-22. Settings are managed from the admin page (Revision 3). See "Revision 4" at the end for the latest changes and what is still open.  **Date:** 2026-11-20  **Author:** planning agent (Opus), reviewed by the coding agent
 
 **Goal.** Add a "digital twin" to the public CV site: a small, friendly **floating avatar** (an illustration generated from the owner's own photo) that, when clicked, opens a conversation dialog where visitors (recruiters, colleagues) ask natural-language questions about the owner's career and get short answers **grounded only in the live CV data** (`CVData` in KV `cv_content`). The twin runs on **OpenRouter free (`:free`) models** called server-side from a Pages Function. It must never invent facts, must say clearly that it is an AI, must keep working (or say politely that it is resting) when the free quota runs out, and must not slow down or break the public CV.
 
@@ -405,7 +405,7 @@ A "Digital twin" card in `Admin.tsx`: on/off toggle (writes `twin_config.enabled
 
 ## Implementation status (updated 2026-11-21)
 
-Built by the coding agent (Sonnet) after the owner said "ok you may start work on it". **Nothing is committed and nothing is deployed.** The twin is invisible until the owner completes the Phase 0 setup in `docs/digital-twin-ops.md` and sets `TWIN_ENABLED=true`.
+Built by the coding agent (Sonnet) after the owner said "ok you may start work on it". *(Historical, written 2026-11-21: at that point nothing was committed or deployed; both have since happened, see Revision 4.)* The twin is invisible until the owner completes the Phase 0 setup in `docs/digital-twin-ops.md` and sets `TWIN_ENABLED=true`.
 
 | Revision-2 item | Status | Where |
 |---|---|---|
@@ -448,3 +448,22 @@ The owner asked for the avatar, AI model, AI provider URL and AI API key to be c
 **Verification:** 129 tests pass (settings validation, encryption incl. AAD/secret/tamper, precedence and fail-closed rules, admin routes, audit contents, avatar rejection cases, public avatar headers, middleware 401/403, provider hardening). Run end to end in a real browser with the local mock: save settings (key encrypted, never in the page), test connection, chat using the saved settings (`config_source: kv`), avatar upload to the public launcher and dialog, reset, stale-save 409. **That run caught a real bug:** `redirect: "error"` is unsupported by the Workers runtime and made every provider call fail silently; fixed (`"manual"` + 3xx rejection) with a regression test.
 
 **Still owner actions / unverified:** set the `TWIN_CONFIG_ENC_KEY`, `TWIN_HMAC_SECRET`, `TURNSTILE_SECRET_KEY` secrets, create the D1 database, Turnstile widget and WAF rule (docs/digital-twin-ops.md); none of this has talked to the real OpenRouter, Turnstile or Cloudflare. Known limits: anyone who can deploy code or read Cloudflare secrets can still decrypt the key; previews share the production KV namespace (`preview_id` = `id`), so keep `TWIN_CONFIG_ENC_KEY` out of Preview and create a separate preview namespace when possible; a rollback to an older deployment ignores the saved admin settings; an audit-trail viewer is not built yet.
+
+---
+
+## Revision 4 (2026-11-22 to 2026-11-23): live setup, model and link fixes, friendlier look
+
+**Setup progress (owner):** D1 database `cv-twin` bound as `TWIN_DB`, Turnstile site key and `TWIN_ALLOWED_HOSTS` (`myrootdirectory.pages.dev`) set in `wrangler.toml`; the three secrets (`TWIN_CONFIG_ENC_KEY`, `TWIN_HMAC_SECRET`, `TURNSTILE_SECRET_KEY`) were added by the owner in the Pages dashboard; `/api/chat/status` reported `enabled: true` on 2026-11-22. **Not verified by the coding agent:** a real visitor chat end to end with the real provider (the bot check blocked the automated browser, and it was not bypassed), so the owner's own test is the first real check.
+
+**Changes**
+- **Model ids:** `openrouter/free` (OpenRouter's Free Models Router, listed price 0, checked on the public model list) is allowed in free-only mode; the other `openrouter/*` routers (`auto`, ...) have variable pricing and still need "allow paid". On save, OpenRouter ids must look like `vendor/model` (the typo `openrouter:free` caused the first "cannot reach the model" report). Provider errors are classified (`rejected_key` for 401/403, `bad_request` for 400/404/422), so "Test saved settings" says whether the key or the model id was refused; visitors still get a generic error.
+- **Links in answers (owner report: "LinkedIn leads to the wrong page"):** the footer link already held the owner's exact address; the likely cause was the model's typed answer. `links.ts` now checks every link in an answer against the CV's real links (exact kept, any LinkedIn profile replaced by the owner's, all others removed); prompt rule 13 asks the model to copy links exactly (`PROMPT_VERSION` 2026-11-22.1); `linkify.tsx` makes only the owner's own links clickable; the contact quick answer lists LinkedIn and GitHub.
+- **Wording (owner request):** dialog title "Ask me"; notice "I'm Wei Hon. My answers come from this CV and may be inaccurate. Messages are processed by a third-party AI provider that may log them, so please don't share personal or sensitive information." This replaces the earlier explicit "I'm an AI" line (decision D1's disclosure) at the owner's request; the notice still names an AI provider, and the launcher label and greeting bubble still say "digital twin". Revisit if explicit AI disclosure is wanted or required for some visitors.
+- **Look and motion (owner request):** warm gradient header, bubbles with mini avatars, typing dots, emoji topic chips, rounded input with a send button; avatar floats, pulses an invite ring, twinkles, waves every few seconds, jumps on hover, tilts while thinking and hops when an answer arrives. CSS only; every animation sits in the `prefers-reduced-motion: no-preference` block. The avatar is one picture, so there is no blink or hand wave; real expressions need extra frames supplied by the owner.
+- **Admin page lazy-loaded** (public bundle smaller); 145 tests; commits through `f9b63ab`.
+
+**Still open**
+1. Owner: run "Test saved settings" with the real key, set the second model to `openrouter/free`, ask real questions (including things not in the CV).
+2. Owner: approve or edit the drafted quick answers (`starters.ts`), fix typos in the CV text, add the FAQ (`twin_faq`), decide about $10 OpenRouter credits (free cap about 50 requests/day).
+3. Owner: clean-up items from `docs/admin-access-setup.md` section 4 (old deployments, `admin_password` key, preview KV namespace).
+4. Engineering: CSP and security headers (REPORT S-9), CI (lint, build, tests, audit), a small UI/e2e smoke test, audit-trail viewer in the admin card, streaming replies only if latency needs it, thumbs up/down, avatar expression frames if supplied.

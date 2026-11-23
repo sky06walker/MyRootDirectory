@@ -7,6 +7,8 @@ and `functions/api/admin/_middleware.ts` re-verifies that signature on **every**
 (RS256 only, issuer, audience, expiry, signing keys from your team's JWKS). If Access is not
 configured the admin API **fails closed** (401). The public CV and `GET /api/content` stay open.
 
+> **Status for this project (2026-11-23):** done and working. Zero Trust team `c-weihon`, one Access application covering `/admin` and `/api/admin` on `myrootdirectory.pages.dev`, `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` set in `wrangler.toml`, and sign-in by one-time code confirmed by the owner on 2026-11-21. The clean-up items in section 4 are not confirmed done.
+
 > **Do the steps in this order.** Failing closed only locks the admin out; it never exposes anything.
 > Configure and test Access first, set the two values, and deploy last.
 

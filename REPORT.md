@@ -3,7 +3,28 @@
 **Project:** MyRootDirectory (React 19 + Vite SPA on Cloudflare Pages, Pages Functions + Workers KV)
 **Date:** 2026-11-20
 **Scope:** every file under `src/`, `functions/`, plus `wrangler.toml`, `package.json`/lockfile, `.gitignore`, tracked `.wrangler/` state, root helper scripts and static assets.
-**Nothing was committed.** All changes are uncommitted in the working tree and can be reviewed with `git diff` / `git status`.
+**Status updated 2026-11-23:** everything below is committed and on `main` (see the status table first; sections 1 to 7 describe the state at the time of the original review).
+
+---
+
+## Status as of 2026-11-23 (read this first)
+
+| Item | Status |
+|---|---|
+| S-1 forgeable session, S-2 default password | **Fixed and live.** The owner signs in through Cloudflare Access (confirmed working 2026-11-21); the app re-verifies the signed token on every admin request. The two settings are `ACCESS_TEAM_DOMAIN` / `ACCESS_AUD` in `wrangler.toml` (renamed from `CF_ACCESS_*` after a clash with locked dashboard entries; see `docs/admin-access-setup.md`). |
+| S-3 committed local KV file | Index cleaned and git-ignored. **Owner actions not confirmed:** delete the KV key `admin_password`; delete Pages deployments from before the Access change. The GitHub repository is **public** (checked 2026-11-21), so treat the old password as exposed and decide about `git filter-repo` (force-push). |
+| S-4, S-5, S-6 | Superseded by Access. |
+| S-7 no schema/size check on `POST /api/admin/content` | Open. |
+| S-8 audit trail | Partly: `cv_content_updated` log line; the twin settings write a D1 audit trail (`twin_audit`). Enable Workers Logs for retention. |
+| S-9 CSP and security headers | Open (ship as its own change; Turnstile and `/api/twin/avatar` must be allowed in the policy). |
+| D-1 `react-router` advisories (production, high) and dev-tool advisories | Open: `npm audit fix`, then smoke-test routing. |
+| O-1 functions not type-checked | **Done:** `tsconfig.functions.json`, part of `npm run build`. |
+| O-2 previews share the production KV namespace | Open (create a separate preview namespace; keep `TWIN_CONFIG_ENC_KEY` out of Preview). |
+| P-1 photo inside the CV JSON | Open (the twin avatar is stored separately and is not affected). |
+| P-2 cache headers on `GET /api/content` | Open. |
+| P-3 bundle size | **Done:** the admin page and the twin dialog are lazy-loaded; the public bundle is smaller than before the twin existed. |
+| Tests / CI | 145 tests (twin backend, Access sign-in check). No CI, no UI/e2e tests yet. |
+| New since the review | The digital twin: `planning/PLAN.md` (design and status), `docs/digital-twin-ops.md` (setup and operations). |
 
 ---
 

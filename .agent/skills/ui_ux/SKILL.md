@@ -130,3 +130,11 @@ The app switches themes by setting the `data-theme` attribute on the `<html>` el
 2. **Component Reuse**: Can you use `.card` or `.btn`?
 3. **Theme Check**: Does it look good in both `modern` (Dark/Light) and `custom`?
 4. **Print Check**: If it's the CV view, does it print correctly? (`@media print` rules).
+
+## 6. Digital twin widget (floating avatar and chat dialog)
+
+Documented in `docs/digital-twin-ops.md` ("Customising the look and the wording") and `CLAUDE.md`.
+
+- Surfaces, borders and text use the theme tokens above. The widget adds warm accents (`--twin-accent`, `--twin-accent-2`, `--twin-peach`, `--twin-pink`, `--twin-ink`) on `.twin-launcher`, `.twin-bubble` and `.twin-dialog`: the one deliberate exception to "no hard-coded colours". White text on the accent must keep 4.5:1.
+- Its rounded, playful radii are its own (not `--radius`), so it looks the same in the `modern` and `custom` themes.
+- Every animation lives inside the single `@media (prefers-reduced-motion: no-preference)` block (keyframes excepted); it is hidden in print through `.no-print`.
