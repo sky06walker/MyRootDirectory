@@ -119,10 +119,10 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 
 ### Using a custom domain
 
-The twin only appears on hostnames listed in `TWIN_ALLOWED_HOSTS` (any other host gets `enabled:false` from `/api/chat/status`, so the avatar is simply not drawn). For each extra hostname, e.g. `myrootdirectory.c-weihon.dpdns.org`:
+The twin only appears on hostnames listed in `TWIN_ALLOWED_HOSTS` (any other host gets `enabled:false` from `/api/chat/status`, so the avatar is simply not drawn). For each extra hostname, e.g. `myrootdirectory.cweihon.dpdns.org`:
 
 1. **Pages -> `myrootdirectory` -> Custom domains** must contain the host (a CNAME at the DNS provider alone is not enough; Pages answers 403 for unknown hosts), and its DNS record must point at `myrootdirectory.pages.dev`.
-2. Add it to `TWIN_ALLOWED_HOSTS` in `wrangler.toml` (comma-separated, no scheme) and push. *(Done for `myrootdirectory.c-weihon.dpdns.org`.)*
+2. Add it to `TWIN_ALLOWED_HOSTS` in `wrangler.toml` (comma-separated, no scheme) and push. *(Done for `myrootdirectory.cweihon.dpdns.org` and `cweihon.dpdns.org`.)*
 3. **Turnstile -> your widget -> Hostnames** must include it, otherwise the bot check fails there.
 4. The admin page needs its own step, see "Custom domains" in `docs/admin-access-setup.md`.
 

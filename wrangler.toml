@@ -14,7 +14,7 @@ ACCESS_AUD = "bf03e86d9e987c7ec86affac111094b2d6c74fd7446b9a479251681df8447b5a"
 # TWIN_HMAC_SECRET, TURNSTILE_SECRET_KEY) are added in the Pages dashboard as type Secret.
 # The host(s) allowed to call the public chat endpoint (comma-separated; every public hostname of the site,
 # including each custom domain, otherwise the twin stays hidden there).
-TWIN_ALLOWED_HOSTS = "myrootdirectory.pages.dev,myrootdirectory.c-weihon.dpdns.org"
+TWIN_ALLOWED_HOSTS = "myrootdirectory.pages.dev,myrootdirectory.cweihon.dpdns.org,cweihon.dpdns.org"
 # Turnstile site key: public by design. Also read at build time (Vite) for the bot check in the chat dialog.
 VITE_TURNSTILE_SITE_KEY = "0x4AAAAAAGLh-v_cGTdv0Aly"
 

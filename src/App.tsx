@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Home } from './pages/Home';
 import { RequireAuth } from './components/RequireAuth';
 import type { Theme } from './utils/types';
+import { adminRedirectTarget } from './utils/adminHost';
 
 // The admin console is only for the owner: keep it out of the public page's JavaScript.
 const Admin = lazy(() => import('./pages/Admin').then((m) => ({ default: m.Admin })));
@@ -22,8 +23,21 @@ function getInitialTheme(): Theme {
     return 'modern';
 }
 
+// Cloudflare Access only covers the canonical host, so /admin on a custom domain moves there.
+function GoToAdminHost({ target }: { target: string }) {
+    useEffect(() => {
+        window.location.replace(target);
+    }, [target]);
+    return (
+        <div className="container">
+            <p>Opening the admin console… If nothing happens, <a href={target}>continue here</a>.</p>
+        </div>
+    );
+}
+
 function AppContent() {
     const [theme, setTheme] = useState<Theme>(getInitialTheme);
+    const adminTarget = adminRedirectTarget(window.location.hostname);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -42,11 +56,13 @@ function AppContent() {
             {/* Old bookmark: the password login page no longer exists (Cloudflare Access handles sign-in). */}
             <Route path="/login" element={<Navigate to="/admin" replace />} />
             <Route path="/admin" element={
-                <RequireAuth>
-                    <Suspense fallback={<div className="container">Loading...</div>}>
-                        <Admin theme={theme} />
-                    </Suspense>
-                </RequireAuth>
+                adminTarget ? <GoToAdminHost target={adminTarget} /> : (
+                    <RequireAuth>
+                        <Suspense fallback={<div className="container">Loading...</div>}>
+                            <Admin theme={theme} />
+                        </Suspense>
+                    </RequireAuth>
+                )
             } />
         </Routes>
     );
