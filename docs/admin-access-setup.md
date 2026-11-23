@@ -38,6 +38,15 @@ ACCESS_AUD = "<AUD tag from step 1.5>"
 
 `ACCESS_TEAM_DOMAIN` must be `<team>.cloudflareaccess.com` (scheme and trailing slash are tolerated); anything else is rejected. The `name` at the top of `wrangler.toml` must be the real Pages project name (`myrootdirectory`).
 
+### Custom domains (e.g. `myrootdirectory.c-weihon.dpdns.org`)
+
+Access only protects the hostnames listed as destinations of the application, so on a custom host `/admin` is **not** behind Access: no sign-in happens, no `Cf-Access-Jwt-Assertion` header arrives, and the app (which fails closed) shows "Access denied". Nothing is exposed; the admin just does not work there. Options:
+
+- **A. Use `https://myrootdirectory.pages.dev/admin` for administration** (works today, nothing to configure). The public CV and the twin can use any custom host.
+- **B. Protect the custom host too:** add `<custom-host>/admin` and `<custom-host>/api/admin` as destinations of the **same** Access application (same AUD tag, so no code change). Access can only sit in front of hostnames whose DNS is served through your Cloudflare account (an external DNS provider such as DigitalPlat generally is not enough; delegate the domain's nameservers to Cloudflare, or use a domain you can add to Cloudflare as a zone). Verify with a private window: `/admin` must redirect to the Access sign-in.
+
+Either way, add the host to `TWIN_ALLOWED_HOSTS` and the Turnstile hostnames (see `docs/digital-twin-ops.md`, "Using a custom domain").
+
 ## 3. Test before you deploy
 
 - Open `https://<your-domain>/admin` in a private window: you must be redirected to the Access sign-in. If you see the admin UI, Access is not covering that path.

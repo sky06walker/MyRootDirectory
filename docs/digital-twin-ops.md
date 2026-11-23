@@ -117,6 +117,15 @@ npx wrangler kv key delete twin_disabled --binding CV_DATA --remote     # on aga
 7. Add the **Cloudflare WAF rate-limit rule** for `POST /api/chat` (about 10 requests per 10 seconds per IP) and enable Workers Logs.
 8. Open `/admin` -> "Digital twin (AI chat)": paste the key, check the provider URL and model, choose an avatar if you like, press **Save**, then **Test saved settings**, then tick "Show the digital twin to visitors" and Save again. The card shows what is still missing.
 
+### Using a custom domain
+
+The twin only appears on hostnames listed in `TWIN_ALLOWED_HOSTS` (any other host gets `enabled:false` from `/api/chat/status`, so the avatar is simply not drawn). For each extra hostname, e.g. `myrootdirectory.c-weihon.dpdns.org`:
+
+1. **Pages -> `myrootdirectory` -> Custom domains** must contain the host (a CNAME at the DNS provider alone is not enough; Pages answers 403 for unknown hosts), and its DNS record must point at `myrootdirectory.pages.dev`.
+2. Add it to `TWIN_ALLOWED_HOSTS` in `wrangler.toml` (comma-separated, no scheme) and push. *(Done for `myrootdirectory.c-weihon.dpdns.org`.)*
+3. **Turnstile -> your widget -> Hostnames** must include it, otherwise the bot check fails there.
+4. The admin page needs its own step, see "Custom domains" in `docs/admin-access-setup.md`.
+
 ## Day-to-day
 
 - **"Resting" in the dialog:** the free quota (or the global cap) is used up or the provider paused us. It clears at 00:00 UTC (08:00 Malaysia time) for the daily quota, 60 s for provider throttling, 15 min for a payment problem. Quick answers and email keep working. If it happens repeatedly: lower `TWIN_IP_PER_DAY`, switch Turnstile to an interactive challenge, or buy credits.

@@ -232,4 +232,13 @@ describe("config", () => {
     expect(isLocalRequest(at("http://127.0.0.1/x"))).toBe(true);
     expect(isAllowedHost(at("https://cv.example.com/x"), makeEnv({ TWIN_ALLOWED_HOSTS: "" }))).toBe(false);
   });
+
+  it("accepts every host in a comma-separated list (custom domain next to pages.dev), nothing else", () => {
+    const env = makeEnv({ TWIN_ALLOWED_HOSTS: "cv.pages.dev, me.example.org ,," });
+    const at = (url: string) => new Request(url);
+    expect(isAllowedHost(at("https://cv.pages.dev/x"), env)).toBe(true);
+    expect(isAllowedHost(at("https://ME.example.org/x"), env)).toBe(true);
+    expect(isAllowedHost(at("https://evil.example.org/x"), env)).toBe(false);
+    expect(isAllowedHost(at("https://me.example.org.evil.com/x"), env)).toBe(false);
+  });
 });
